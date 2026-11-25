@@ -50,6 +50,9 @@ dans `../hometools-proxy`. Chacun a son propre CLAUDE.md.
 - Écrans : barre d'onglets en bas (`App.vue`, sans routeur) : Add (`AddView.vue`), Budget (`BudgetView.vue`), History
   (`HistoryView.vue`).
 - Le Mac calcule tout (réel, budget, non confirmé) : l'app n'additionne rien.
+- Cartes nominatives : propriétaire de l'iPhone = `owner` de whoami (contrat 1.8.0), gardé pour l'usage hors ligne
+  (`ht:<envId>:owner`). Add ne propose que ses cartes et History ne montre que ses saisies (`owner` de `mobile.json`,
+  `ownPaymentMeans` / `ownEntries`) ; Budget reste commun. Sans propriétaire : aucune carte, message explicite.
 - Pièces reprises de HomeTools (`proxyClient`, `proxyKeyVault`, `environmentGuard`, `contracts/environment.ts`,
   `contracts/read.ts`) : garder le même comportement ; une correction faite d'un côté se reporte de l'autre.
 - Interface en anglais, commentaires en français. Champs à 16 px au moins (pas de zoom Safari), zones sûres

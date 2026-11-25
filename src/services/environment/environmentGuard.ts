@@ -23,7 +23,13 @@ import {
 } from "@/contracts/environment";
 
 import {
+  readStored,
+  writeStored,
+} from "./browserStorage";
+
+import {
   blockEnvironment,
+  deviceOwner,
   environment,
   environmentBlock,
   requiresReload,
@@ -45,11 +51,14 @@ import {
    l'environnement connu, elle est rangée sous celui-ci si
    elle vient d'être saisie ou si elle était rangée sous un
    autre (appareil réaffecté). L'environnement du coffre
-   (storedEnvId) permet d'ouvrir l'app hors ligne.
+   (storedEnvId) permet d'ouvrir l'app hors ligne, avec le
+   dernier propriétaire connu de l'appareil (ht:<envId>:owner).
 ========================= */
 
 const RETRY_INTERVAL_MS =
   60 * 1000;
+
+const OWNER_CACHE = "owner";
 
 export const environmentChecking =
   ref(false);
@@ -104,6 +113,9 @@ export async function loadEnvironment() {
       keySource = stored;
       storedEnvId.value = stored.env;
       setProxyKey(stored.value);
+
+      deviceOwner.value =
+        readStored(OWNER_CACHE, raw => (typeof raw === "string" && raw ? raw : null));
     }
 
     const response =
@@ -146,6 +158,9 @@ export async function loadEnvironment() {
     environment.value = info;
     storedEnvId.value = info.env;
     environmentBlock.value = null;
+
+    deviceOwner.value = info.owner;
+    writeStored(OWNER_CACHE, info.owner);
 
   } catch (err) {
 

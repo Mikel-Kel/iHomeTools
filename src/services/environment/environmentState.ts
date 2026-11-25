@@ -39,6 +39,15 @@ export type EnvironmentBlock =
 export const environment =
   shallowRef<EnvironmentInfo | null>(null);
 
+/*
+  Propriétaire de l'appareil (whoami, contrat §3.3) : l'app ne
+  propose que ses cartes et ne montre que ses saisies. Hors
+  ligne, le dernier connu (environmentGuard.ts). null : pas
+  déclaré dans environments.json.
+*/
+export const deviceOwner =
+  ref<string | null>(null);
+
 export const environmentBlock =
   shallowRef<EnvironmentBlock | null>(null);
 

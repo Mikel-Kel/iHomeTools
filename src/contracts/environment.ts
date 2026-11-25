@@ -17,7 +17,7 @@ import {
 
 /* Version du contrat implémentée par l'app. */
 export const CONTRACT_VERSION =
-  "1.7.0";
+  "1.8.0";
 
 export const WHOAMI_PATH =
   "/api/whoami";
@@ -60,6 +60,10 @@ export interface EnvironmentInfo {
   device: string;
   kind: string;
   isServer: boolean;
+
+  /* Propriétaire de l'appareil (depuis 1.8.0, §3.3) ; null s'il n'est pas déclaré. */
+  owner: string | null;
+
   capabilities: Capabilities;
 }
 
@@ -128,6 +132,9 @@ export function readWhoami(
 
     isServer:
       asBoolean(root.isServer),
+
+    owner:
+      asString(root.owner).trim() || null,
 
     capabilities: {
       localArchive:

@@ -1,4 +1,5 @@
 import {
+  computed,
   ref,
   shallowRef,
   watch,
@@ -13,6 +14,8 @@ import {
   readExchangeCurrencies,
   readMobileData,
   type MobileData,
+  type MobileEntry,
+  type PaymentMean,
 } from "@/contracts/mobile";
 
 import {
@@ -21,6 +24,7 @@ import {
 } from "@/services/environment/browserStorage";
 
 import {
+  deviceOwner,
   environment,
   environmentEstablished,
   storedEnvId,
@@ -54,6 +58,23 @@ export const mobileData =
 
 export const currencies =
   ref<string[]>([BASE_CURRENCY]);
+
+/*
+  Cartes et saisies du propriétaire de l'iPhone (contrat
+  mobile, § 5) ; aucune sans propriétaire. Le réel et le
+  budget restent communs.
+*/
+export const ownPaymentMeans =
+  computed<PaymentMean[]>(() =>
+    (mobileData.value?.paymentMeans ?? [])
+      .filter(mean => deviceOwner.value !== null && mean.owner === deviceOwner.value)
+  );
+
+export const ownEntries =
+  computed<MobileEntry[]>(() =>
+    (mobileData.value?.entries ?? [])
+      .filter(entry => deviceOwner.value !== null && entry.owner === deviceOwner.value)
+  );
 
 export const mobileLoading =
   ref(false);

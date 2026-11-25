@@ -12,9 +12,12 @@ import {
   writeStored,
 } from "@/services/environment/browserStorage";
 
+import { deviceOwner } from "@/services/environment/environmentState";
+
 import {
   currencies,
   mobileData,
+  ownPaymentMeans,
 } from "@/services/mobile/mobileData";
 
 import { formatAmount } from "@/utils/amountFormat";
@@ -23,6 +26,8 @@ import { formatAmount } from "@/utils/amountFormat";
    Saisie d'une dépense
 
    Montant, carte, sous-catégorie et commentaire facultatif ;
+   seules les cartes du propriétaire de l'iPhone sont
+   proposées (contrat mobile, § 5) ;
    devise de la carte par défaut, modifiable (CHF et devises
    du fichier des cours). L'heure du paiement est celle de
    l'enregistrement. La saisie part dans la file d'attente
@@ -41,7 +46,7 @@ const AMOUNT_MAX = 9_999_999;
 const LAST_CARD = "mex.lastCard";
 
 const means =
-  computed(() => mobileData.value?.paymentMeans ?? []);
+  ownPaymentMeans;
 
 const subCategories =
   computed(() => mobileData.value?.subCategories ?? []);
@@ -204,10 +209,17 @@ watch(
     </p>
 
     <p
+      v-else-if="!deviceOwner"
+      class="state"
+    >
+      This iPhone has no owner: declare it in the proxy identities (environments.json).
+    </p>
+
+    <p
       v-else-if="!means.length || !subCategories.length"
       class="state"
     >
-      No card or sub-category offered yet: choose them in HomeTools, Master data.
+      No card or sub-category offered to {{ deviceOwner }} yet: choose them in HomeTools, Master data.
     </p>
 
     <form

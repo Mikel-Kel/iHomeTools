@@ -9,9 +9,14 @@ import {
   type QueueStep,
 } from "@/services/mobile/expenseQueue";
 
-import { mobileData } from "@/services/mobile/mobileData";
+import {
+  mobileData,
+  ownEntries,
+} from "@/services/mobile/mobileData";
 
 import type { MobileEntry } from "@/contracts/mobile";
+
+import { deviceOwner } from "@/services/environment/environmentState";
 
 import { formatAmount } from "@/utils/amountFormat";
 
@@ -20,7 +25,8 @@ import { formatAmount } from "@/utils/amountFormat";
 
    D'abord les saisies encore dans la file de l'iPhone
    (expenseQueue.ts), puis celles que publie mobile.json
-   (60 derniers jours et toutes les saisies ouvertes), de la
+   pour le propriétaire de l'iPhone (60 derniers jours et
+   toutes les saisies ouvertes ; contrat mobile, § 5), de la
    plus récente à la plus ancienne. Une saisie présente des
    deux côtés est montrée une fois, avec l'état de la file.
 
@@ -110,7 +116,7 @@ const rows =
       );
 
     const published =
-      (mobileData.value?.entries ?? [])
+      ownEntries.value
         .filter(entry => !queuedIds.has(entry.id))
         .map(entry => {
           const state =
@@ -152,14 +158,21 @@ function shortDateTime(
 <template>
   <div class="history-view">
     <p
-      v-if="!rows.length"
+      v-if="!deviceOwner"
+      class="state"
+    >
+      This iPhone has no owner: only entries still on this iPhone are shown.
+    </p>
+
+    <p
+      v-else-if="!rows.length"
       class="state"
     >
       No entry yet.
     </p>
 
     <ul
-      v-else
+      v-if="rows.length"
       class="rows"
     >
       <li

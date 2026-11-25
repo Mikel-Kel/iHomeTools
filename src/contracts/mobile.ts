@@ -23,6 +23,10 @@ import {
              compris), actual, pending.
    pending : saisies iPhone non annulées dont le mouvement
    n'est pas libéré (« non confirmé »).
+
+   owner (cartes et saisies) : propriétaire de la carte
+   (MobileOwner, § 3.2), null s'il n'est pas choisi ; l'app
+   ne montre que ceux de son appareil (§ 5).
 ========================= */
 
 export const MOBILE_FOLDER = "mobile";
@@ -37,6 +41,7 @@ export interface PaymentMean {
   cardId: number;
   label: string;
   holder: string;
+  owner: string | null;
   kind: CardKind;
 
   /* Devise proposée par défaut (carte, sinon compte). */
@@ -77,6 +82,7 @@ export interface MobileEntry {
   id: string;
   paidAt: string;
   cardId: number;
+  owner: string | null;
   amount: number;
   currency: string;
   amountChf: number | null;
@@ -124,6 +130,12 @@ function readState(
     : "open";
 }
 
+function readOwner(
+  value: unknown
+): string | null {
+  return asString(value).trim() || null;
+}
+
 function readMovement(
   value: unknown
 ): LinkedMovement | null {
@@ -165,6 +177,7 @@ export function readMobileData(
         cardId: asNumber(mean.cardId),
         label: asString(mean.label),
         holder: asString(mean.holder),
+        owner: readOwner(mean.owner),
         kind: (mean.kind === "credit" ? "credit" : "debit") as CardKind,
         currency: asString(mean.currency, "CHF"),
       })),
@@ -206,6 +219,7 @@ export function readMobileData(
         id: asString(entry.id),
         paidAt: asString(entry.paidAt),
         cardId: asNumber(entry.cardId),
+        owner: readOwner(entry.owner),
         amount: asNumber(entry.amount),
         currency: asString(entry.currency, "CHF"),
         amountChf: asNullableNumber(entry.amountChf),
