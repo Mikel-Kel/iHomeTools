@@ -53,5 +53,8 @@ dans `../hometools-proxy`. Chacun a son propre CLAUDE.md.
 - Fichiers complets et propres, prêts pour la production : aucun reliquat de POC, code de test ou code commenté transitoire.
 - Travail par petites étapes : une modification, vérification (build + type-check), puis on continue.
 - Michel décide de l'architecture : proposer les options et attendre son accord avant tout changement structurel.
-- Ne pas commiter depuis une session : Michel commite et déploie lui-même.
+- Ne pas commiter depuis une session (ni depuis VSCode) : préparer les modifications, puis Michel lance dans myTooling
+  (projet iHomeTools) **Commit + Tag**, avec « Deliver afterwards » pour livrer. Commit + Tag refuse un dossier sans
+  modification, et Deliver exige que HEAD soit exactement le dernier tag : un commit fait hors de myTooling bloque les deux
+  jusqu'à la modification suivante.
 - Ne jamais lire ni afficher de fichier `.env*` ou contenant des secrets.
