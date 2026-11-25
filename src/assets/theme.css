@@ -1,0 +1,152 @@
+/* =========================================================
+   iHomeTools – thème
+
+   Tokens repris de HomeTools ; le mode sombre suit celui de
+   l'iPhone (prefers-color-scheme), sans réglage dans l'app.
+========================================================= */
+
+:root {
+  color-scheme: light dark;
+
+  --bg: #f2f4f7;
+  --surface: #ffffff;
+  --surface-soft: #f8fafc;
+
+  --text: #0f172a;
+  --text-soft: #475569;
+  --text-muted: #94a3b8;
+
+  --primary: #1e40af;
+  --primary-soft: #eef2ff;
+
+  --positive: #15803d;
+  --warning: #d97706;
+  --negative: #b91c1c;
+
+  --border: #e5e7eb;
+  --border-strong: #cbd5e1;
+
+  --input-bg: #ffffff;
+  --input-border: #cbd5e1;
+
+  --btn-primary-bg: var(--primary);
+  --btn-primary-text: #ffffff;
+  --btn-secondary-bg: #f1f5f9;
+  --btn-secondary-text: var(--text);
+
+  --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.18);
+
+  --font-family-base: system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.85rem;
+  --font-size-md: 1rem;
+  --font-size-lg: 1.1rem;
+  --font-size-xl: 1.35rem;
+
+  /* Marges de l'écran (encoche, barre d'accueil). */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --gutter: 16px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #020617;
+    --surface: #0f172a;
+    --surface-soft: #1e293b;
+
+    --text: #e5e7eb;
+    --text-soft: #cbd5f5;
+    --text-muted: #94a3b8;
+
+    --primary: #93c5fd;
+    --primary-soft: #1e293b;
+
+    --positive: #22c55e;
+    --warning: #fbbf24;
+    --negative: #f87171;
+
+    --border: #334155;
+    --border-strong: #475569;
+
+    --input-bg: #0f172a;
+    --input-border: #475569;
+
+    --btn-primary-text: #0f172a;
+    --btn-secondary-bg: #1e293b;
+
+    --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.6);
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+
+  background: var(--bg);
+  color: var(--text);
+
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-md);
+  line-height: 1.45;
+
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* Champs à 16 px au moins : Safari ne zoome pas à la saisie. */
+input,
+select,
+textarea {
+  padding: 10px 12px;
+
+  border: 1px solid var(--input-border);
+  border-radius: 10px;
+
+  background: var(--input-bg);
+  color: var(--text);
+
+  font: inherit;
+  font-size: 16px;
+}
+
+button {
+  font: inherit;
+}
+
+.button {
+  min-height: 44px;
+  padding: 0 18px;
+
+  border: none;
+  border-radius: 22px;
+
+  background: var(--btn-secondary-bg);
+  color: var(--btn-secondary-text);
+
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+.button.primary {
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
