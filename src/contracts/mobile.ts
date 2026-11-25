@@ -268,17 +268,26 @@ export function readExchangeCurrencies(
 }
 
 /* =========================
-   Événements PWA-MEX_<AAAAMMJJHHMMSS>_<id>.json (§ 4)
+   Événements PWA-MEX_<AAAAMMJJHHMMSS>_<id>[_DEL].json (§ 4)
 
    MOBILE_EXPENSE_SAVED : création ou modification ; un
    événement dont clientUpdatedAt n'est pas plus récent que
    la base ne change rien (envoi répété sans effet). Pas de
-   tag. Statut dans events/status/<même nom>.
+   tag. Saisie liée : seuls subCategoryId et comment peuvent
+   changer ; saisie allouée ou annulée : refus.
+
+   MOBILE_EXPENSE_CANCELLED (suffixe _DEL) : annulation,
+   refusée pour une saisie liée ; saisie inconnue ou déjà
+   annulée : succès.
+
+   Statut dans events/status/<même nom>.
 ========================= */
 
 export const MOBILE_EXPENSE_EVENT_TRIGRAM = "MEX";
 
 export const MOBILE_EXPENSE_EVENT_VERSION = 1;
+
+export const MOBILE_EXPENSE_CANCEL_SUFFIX = "_DEL";
 
 export interface MobileExpenseSave {
   id: string;
@@ -291,5 +300,10 @@ export interface MobileExpenseSave {
   currency: string;
   subCategoryId: number;
   comment: string;
+  clientUpdatedAt: string;
+}
+
+export interface MobileExpenseCancel {
+  id: string;
   clientUpdatedAt: string;
 }

@@ -38,15 +38,22 @@ dans `../hometools-proxy`. Chacun a son propre CLAUDE.md.
   (`appUsable`), sous l'environnement du coffre (`storedEnvId`), avec les dernières données gardées ; bandeau d'état
   dans `App.vue`.
 - Stockage de l'iPhone : `browserStorage.ts`, localStorage préfixé `ht:<envId>:` (`mobile`, `currencies`, `mex.queue`,
-  `mex.lastCard`).
+  `mex.lastCard`, `owner`).
 - Données : lecture et écriture par `/api/s3/read` et `/api/s3/write` (`store=data`, `src/services/storage/dataStore.ts`) ;
   jamais d'accès S3 direct. `mobile/mobile.json` et les devises de `settings/exchangeRates.json` : `src/services/mobile/mobileData.ts`
   (partagés par les onglets, rechargés à la connexion, au retour au premier plan et sur « Refresh »).
-- Saisies : `src/services/mobile/expenseQueue.ts`. Rangées d'abord sur l'iPhone, puis envoyées dès que le proxy répond :
-  `events/PWA-MEX_<AAAAMMJJHHMMSS>_<id>.json` (`MOBILE_EXPENSE_SAVED`, nom fixé au premier essai) puis
-  `events/control/<eventId>.json` (`STORAGE_PULL_REQUESTED` version 2, `source: "iphone"`). Une saisie quitte la file quand
-  `mobile.json` la publie (clientUpdatedAt au moins aussi récent) ; refus lu dans `events/status/<nom>`, affiché tel quel,
+- Saisies : `src/services/mobile/expenseQueue.ts`. Création, modification et annulation rangées d'abord sur l'iPhone
+  (un élément par saisie, action `save` ou `cancel`, `clientUpdatedAt` toujours plus récent), puis envoyées dès que le
+  proxy répond : `events/PWA-MEX_<AAAAMMJJHHMMSS>_<id>[_DEL].json` (`MOBILE_EXPENSE_SAVED` ou `MOBILE_EXPENSE_CANCELLED`,
+  nom fixé au premier essai ; nouveau fichier pour une version déjà partie) puis `events/control/<eventId>.json`
+  (`STORAGE_PULL_REQUESTED` version 2, `source: "iphone"`). Rien ne change pendant l'étape `written`. Un élément quitte la
+  file quand `mobile.json` publie la saisie (clientUpdatedAt au moins aussi récent), ou sur le succès d'une annulation ;
+  une saisie jamais partie et annulée est seulement retirée. Refus lu dans `events/status/<nom>`, affiché tel quel,
   « Discard » dans History.
+- Formulaire commun `ExpenseForm.vue` (Add et modification ; `scope` : `all`, `classification`, `none`). History ouvre
+  `ExpenseSheet.vue` : saisie ouverte ou refusée, tout modifiable et annulable (deux touchers) ; liée, sous-catégorie et
+  commentaire seulement ; allouée, annulée, en cours d'envoi ou d'annulation : lecture seule. Heure du paiement jamais
+  modifiable (choix de Michel).
 - Écrans : barre d'onglets en bas (`App.vue`, sans routeur) : Add (`AddView.vue`), Budget (`BudgetView.vue`), History
   (`HistoryView.vue`).
 - Le Mac calcule tout (réel, budget, non confirmé) : l'app n'additionne rien.
@@ -62,7 +69,7 @@ dans `../hometools-proxy`. Chacun a son propre CLAUDE.md.
 
 1. Squelette : connexion, clé, lecture de `mobile.json` (fait).
 2. Saisie d'une dépense avec file d'attente hors ligne, devise modifiable, onglets, History (fait).
-3. Modification et annulation d'une saisie depuis History (`MOBILE_EXPENSE_SAVED`, `MOBILE_EXPENSE_CANCELLED`).
+3. Modification et annulation d'une saisie depuis History (`MOBILE_EXPENSE_SAVED`, `MOBILE_EXPENSE_CANCELLED`) (fait).
 4. Réel face au budget : barres par sous-catégorie, part « non confirmé » hachurée, vue mois et vue année.
 
 ## Règles de travail

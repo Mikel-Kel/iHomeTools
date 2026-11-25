@@ -1,12 +1,17 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import {
+  computed,
+  ref,
+} from "vue";
 
+import ExpenseSheet from "@/components/ExpenseSheet.vue";
+import type { FormScope } from "@/components/ExpenseForm.vue";
 import StatusPill, { type StatusTone } from "@/components/StatusPill.vue";
 
 import {
   discardExpense,
   queue,
-  type QueueStep,
+  type QueuedExpense,
 } from "@/services/mobile/expenseQueue";
 
 import {
@@ -14,7 +19,10 @@ import {
   ownEntries,
 } from "@/services/mobile/mobileData";
 
-import type { MobileEntry } from "@/contracts/mobile";
+import type {
+  MobileEntry,
+  MobileExpenseSave,
+} from "@/contracts/mobile";
 
 import { deviceOwner } from "@/services/environment/environmentState";
 
@@ -28,21 +36,28 @@ import { formatAmount } from "@/utils/amountFormat";
    pour le propriétaire de l'iPhone (60 derniers jours et
    toutes les saisies ouvertes ; contrat mobile, § 5), de la
    plus récente à la plus ancienne. Une saisie présente des
-   deux côtés est montrée une fois, avec l'état de la file.
+   deux côtés est montrée une fois, avec l'état de la file et
+   sa dernière version voulue.
 
-   États : On iPhone, Sending, Sent (file) ; Received, Linked,
-   Allocated, Cancelled (Mac) ; Rejected avec le message du
-   Mac et « Discard ».
+   États : On iPhone, Sending, Sent, Cancelling (file) ;
+   Received, Linked, Allocated, Cancelled (Mac) ; Rejected
+   avec le message du Mac et « Discard ».
+
+   Toucher une saisie ouvre ExpenseSheet.vue. Règles (§ 4.1,
+   § 4.2) : saisie ouverte ou refusée, tout modifiable et
+   annulable ; liée, sous-catégorie et commentaire seulement,
+   non annulable ; allouée, annulée, en cours d'envoi ou
+   d'annulation : lecture seule.
 ========================= */
 
-interface HistoryRow {
-  id: string;
-  paidAt: string;
-  amount: number;
-  currency: string;
-  cardId: number;
-  subCategoryId: number;
-  comment: string;
+interface EditRules {
+  scope: FormScope;
+  cancellable: boolean;
+  note: string;
+}
+
+interface HistoryRow extends EditRules {
+  expense: MobileExpenseSave;
   state: string;
   tone: StatusTone;
   message: string;
@@ -50,12 +65,23 @@ interface HistoryRow {
   openTooLong: boolean;
 }
 
-const QUEUE_STATES: Record<QueueStep, { label: string; tone: StatusTone }> = {
-  queued: { label: "On iPhone", tone: "warning" },
-  written: { label: "Sending", tone: "warning" },
-  sent: { label: "Sent", tone: "primary" },
-  rejected: { label: "Rejected", tone: "negative" },
-};
+function queueState(
+  item: QueuedExpense
+): { label: string; tone: StatusTone } {
+  if (item.step === "rejected") {
+    return { label: "Rejected", tone: "negative" };
+  }
+
+  if (item.action === "cancel") {
+    return { label: "Cancelling", tone: "warning" };
+  }
+
+  return {
+    queued: { label: "On iPhone", tone: "warning" as StatusTone },
+    written: { label: "Sending", tone: "warning" as StatusTone },
+    sent: { label: "Sent", tone: "primary" as StatusTone },
+  }[item.step];
+}
 
 function entryState(
   entry: MobileEntry
@@ -71,6 +97,53 @@ function entryState(
   return entry.state === "linked"
     ? { label: "Linked", tone: "positive" }
     : { label: "Received", tone: "primary" };
+}
+
+/* Ce que permet la saisie : état de la file d'abord, puis celui du Mac. */
+function editRules(
+  item: QueuedExpense | undefined,
+  entry: MobileEntry | undefined
+): EditRules {
+  if (item?.step === "written") {
+    return { scope: "none", cancellable: false, note: "Being sent: changes are possible in a moment." };
+  }
+
+  if (item?.action === "cancel" && item.step !== "rejected") {
+    return { scope: "none", cancellable: false, note: "Cancellation on its way to the Mac." };
+  }
+
+  if (entry?.state === "cancelled") {
+    return { scope: "none", cancellable: false, note: "Cancelled." };
+  }
+
+  if (entry?.allocated) {
+    return { scope: "none", cancellable: false, note: "Allocated in HomeTools: no change is possible." };
+  }
+
+  if (entry?.state === "linked") {
+    return {
+      scope: "classification",
+      cancellable: false,
+      note: "Linked to a bank movement: only the sub-category and the comment can change.",
+    };
+  }
+
+  return { scope: "all", cancellable: true, note: "" };
+}
+
+function entryExpense(
+  entry: MobileEntry
+): MobileExpenseSave {
+  return {
+    id: entry.id,
+    paidAt: entry.paidAt,
+    cardId: entry.cardId,
+    amount: entry.amount,
+    currency: entry.currency,
+    subCategoryId: entry.subCategoryId,
+    comment: entry.comment,
+    clientUpdatedAt: entry.clientUpdatedAt,
+  };
 }
 
 const cardLabels =
@@ -89,24 +162,8 @@ const subCategoryLabels =
 
 const rows =
   computed<HistoryRow[]>(() => {
-    const queued =
-      queue.value.map(item => ({
-        id: item.expense.id,
-        paidAt: item.expense.paidAt,
-        amount: item.expense.amount,
-        currency: item.expense.currency,
-        cardId: item.expense.cardId,
-        subCategoryId: item.expense.subCategoryId,
-        comment: item.expense.comment,
-        state: QUEUE_STATES[item.step].label,
-        tone: QUEUE_STATES[item.step].tone,
-        message: item.message,
-        rejected: item.step === "rejected",
-        openTooLong: false,
-      }));
-
-    const queuedIds =
-      new Set(queued.map(row => row.id));
+    const entries =
+      new Map(ownEntries.value.map(entry => [entry.id, entry]));
 
     const tooLong =
       new Set(
@@ -114,6 +171,28 @@ const rows =
           .filter(warning => warning.code === "OPEN_TOO_LONG")
           .map(warning => warning.id)
       );
+
+    const queued =
+      queue.value.map(item => {
+        const entry =
+          entries.get(item.expense.id);
+
+        const state =
+          queueState(item);
+
+        return {
+          ...editRules(item, entry),
+          expense: item.expense,
+          state: state.label,
+          tone: state.tone,
+          message: item.message,
+          rejected: item.step === "rejected",
+          openTooLong: false,
+        };
+      });
+
+    const queuedIds =
+      new Set(queue.value.map(item => item.expense.id));
 
     const published =
       ownEntries.value
@@ -123,13 +202,8 @@ const rows =
             entryState(entry);
 
           return {
-            id: entry.id,
-            paidAt: entry.paidAt,
-            amount: entry.amount,
-            currency: entry.currency,
-            cardId: entry.cardId,
-            subCategoryId: entry.subCategoryId,
-            comment: entry.comment,
+            ...editRules(undefined, entry),
+            expense: entryExpense(entry),
             state: state.label,
             tone: state.tone,
             message: entry.movement?.text ?? "",
@@ -139,8 +213,17 @@ const rows =
         });
 
     return [...queued, ...published]
-      .sort((a, b) => b.paidAt.localeCompare(a.paidAt));
+      .sort((a, b) => b.expense.paidAt.localeCompare(a.expense.paidAt));
   });
+
+/* Saisie ouverte dans le panneau ; ses règles suivent la file et mobile.json. */
+const selectedId =
+  ref<string | null>(null);
+
+const selected =
+  computed(() =>
+    rows.value.find(row => row.expense.id === selectedId.value) ?? null
+  );
 
 /* AAAA-MM-JJTHH:MM:SS → JJ.MM HH:MM */
 function shortDateTime(
@@ -177,57 +260,72 @@ function shortDateTime(
     >
       <li
         v-for="row in rows"
-        :key="row.id"
+        :key="row.expense.id"
         class="row"
       >
-        <div class="row-main">
-          <span class="row-title">
-            {{ subCategoryLabels.get(row.subCategoryId) ?? `Sub-category ${row.subCategoryId}` }}
-          </span>
-
-          <span class="row-amount">
-            {{ formatAmount(row.amount) }} {{ row.currency }}
-          </span>
-        </div>
-
-        <div class="row-meta">
-          <span>
-            {{ shortDateTime(row.paidAt) }} · {{ cardLabels.get(row.cardId) ?? `Card ${row.cardId}` }}
-            <template v-if="row.comment"> · {{ row.comment }}</template>
-          </span>
-
-          <span class="pills">
-            <StatusPill
-              v-if="row.openTooLong"
-              tone="warning"
-            >
-              Not linked yet
-            </StatusPill>
-
-            <StatusPill :tone="row.tone">
-              {{ row.state }}
-            </StatusPill>
-          </span>
-        </div>
-
-        <p
-          v-if="row.message"
-          class="row-message"
-          :class="{ error: row.rejected }"
+        <button
+          type="button"
+          class="row-open"
+          @click="selectedId = row.expense.id"
         >
-          {{ row.message }}
-        </p>
+          <span class="row-main">
+            <span class="row-title">
+              {{ subCategoryLabels.get(row.expense.subCategoryId) ?? `Sub-category ${row.expense.subCategoryId}` }}
+            </span>
+
+            <span class="row-amount">
+              {{ formatAmount(row.expense.amount) }} {{ row.expense.currency }}
+            </span>
+          </span>
+
+          <span class="row-meta">
+            <span>
+              {{ shortDateTime(row.expense.paidAt) }} · {{ cardLabels.get(row.expense.cardId) ?? `Card ${row.expense.cardId}` }}
+              <template v-if="row.expense.comment"> · {{ row.expense.comment }}</template>
+            </span>
+
+            <span class="pills">
+              <StatusPill
+                v-if="row.openTooLong"
+                tone="warning"
+              >
+                Not linked yet
+              </StatusPill>
+
+              <StatusPill :tone="row.tone">
+                {{ row.state }}
+              </StatusPill>
+            </span>
+          </span>
+
+          <span
+            v-if="row.message"
+            class="row-message"
+            :class="{ error: row.rejected }"
+          >
+            {{ row.message }}
+          </span>
+        </button>
 
         <button
           v-if="row.rejected"
           type="button"
           class="button discard"
-          @click="discardExpense(row.id)"
+          @click="discardExpense(row.expense.id)"
         >
           Discard
         </button>
       </li>
     </ul>
+
+    <ExpenseSheet
+      v-if="selected"
+      :expense="selected.expense"
+      :scope="selected.scope"
+      :cancellable="selected.cancellable"
+      :note="selected.note"
+      @close="selectedId = null"
+    />
   </div>
 </template>
 
@@ -258,7 +356,7 @@ function shortDateTime(
 .row {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 
   padding: 10px 14px;
 
@@ -267,6 +365,25 @@ function shortDateTime(
 
 .row:first-child {
   border-top: none;
+}
+
+.row-open {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  width: 100%;
+  padding: 0;
+
+  border: none;
+
+  background: none;
+  color: inherit;
+
+  font: inherit;
+  text-align: left;
+
+  cursor: pointer;
 }
 
 .row-main,
@@ -297,8 +414,6 @@ function shortDateTime(
 }
 
 .row-message {
-  margin: 0;
-
   color: var(--text-soft);
   font-size: var(--font-size-sm);
 }
