@@ -27,6 +27,7 @@ import {
   environment,
   environmentBlock,
   requiresReload,
+  storedEnvId,
 } from "./environmentState";
 
 /* =========================
@@ -43,7 +44,8 @@ import {
    (proxyKeyVault.ts) avant whoami, qui l'exige. Une fois
    l'environnement connu, elle est rangée sous celui-ci si
    elle vient d'être saisie ou si elle était rangée sous un
-   autre (appareil réaffecté).
+   autre (appareil réaffecté). L'environnement du coffre
+   (storedEnvId) permet d'ouvrir l'app hors ligne.
 ========================= */
 
 const RETRY_INTERVAL_MS =
@@ -100,6 +102,7 @@ export async function loadEnvironment() {
       }
 
       keySource = stored;
+      storedEnvId.value = stored.env;
       setProxyKey(stored.value);
     }
 
@@ -141,6 +144,7 @@ export async function loadEnvironment() {
     await rememberProxyKey(info.env);
 
     environment.value = info;
+    storedEnvId.value = info.env;
     environmentBlock.value = null;
 
   } catch (err) {

@@ -10,6 +10,7 @@ import {
 } from "@/services/environment/environmentGuard";
 
 import {
+  appUsable,
   environmentBlock,
   requiresReload,
 } from "@/services/environment/environmentState";
@@ -23,7 +24,9 @@ import {
    (Tailscale coupé, Mac en veille). « Retry » relance
    /api/whoami, « Reload » recharge l'app. Clé du proxy
    absente ou refusée : saisie, une fois par appareil
-   (« Connect »).
+   (« Connect »). Proxy injoignable avec une clé déjà rangée :
+   l'app reste utilisable hors ligne (appUsable), un bandeau
+   le signale (App.vue).
 ========================= */
 
 function reloadApp() {
@@ -46,7 +49,7 @@ async function connect() {
 
 <template>
   <div
-    v-if="environmentBlock"
+    v-if="environmentBlock && !appUsable()"
     class="unavailable"
     role="alertdialog"
     aria-modal="true"

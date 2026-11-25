@@ -1,4 +1,4 @@
-import { shallowRef } from "vue";
+import { ref, shallowRef } from "vue";
 
 import type { Capabilities, EnvironmentInfo } from "@/contracts/environment";
 
@@ -10,6 +10,12 @@ import type { Capabilities, EnvironmentInfo } from "@/contracts/environment";
    fois connu et tant qu'il n'est pas bloqué. Avant, seul
    /api/whoami part vers le proxy (proxyClient.ts) et les
    écrans ne sont pas montés (App.vue).
+
+   Hors ligne : l'environnement sous lequel la clé du proxy
+   est rangée (storedEnvId, lu dans le coffre avant whoami)
+   suffit pour ouvrir l'app avec les données gardées sur
+   l'iPhone et mettre les saisies en attente ; « unreachable »
+   n'est alors qu'un bandeau (App.vue).
 
    Blocages, affichés par AppUnavailable.vue :
    - error : refus du proxy (§5.4) ou réponse inexploitable ;
@@ -35,6 +41,33 @@ export const environment =
 
 export const environmentBlock =
   shallowRef<EnvironmentBlock | null>(null);
+
+/* Environnement de la clé rangée dans le coffre, puis celui de whoami. */
+export const storedEnvId =
+  ref<string | null>(null);
+
+/* Environnement du stockage de l'iPhone : connu par whoami, sinon par le coffre. */
+export function localEnvId(): string | null {
+  return environment.value?.env ?? storedEnvId.value;
+}
+
+/*
+  L'app peut s'ouvrir : environnement connu, ou seulement
+  injoignable (ou en cours de vérification) avec une clé
+  déjà rangée.
+*/
+export function appUsable(): boolean {
+  const block =
+    environmentBlock.value;
+
+  return (
+    environment.value !== null ||
+    (
+      storedEnvId.value !== null &&
+      (block === null || block.kind === "unreachable")
+    )
+  );
+}
 
 export function environmentEstablished(): boolean {
   return (

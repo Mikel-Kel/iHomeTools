@@ -32,10 +32,23 @@ dans `../hometools-proxy`. Chacun a son propre CLAUDE.md.
 
 - Réseau : uniquement le proxy, via Tailscale (`proxyFetch`, `src/services/proxy/proxyClient.ts`, seul module qui lit
   `VITE_PROXY_URL` et envoie `X-Proxy-Key`). L'iPhone doit être déclaré dans `identities` de `environments.json` du proxy.
-- Démarrage : `GET /api/whoami` d'abord (`src/services/environment/`), écran bloquant `AppUnavailable.vue` en cas de refus,
-  de clé absente ou de proxy injoignable ; relance toutes les minutes et au retour au premier plan.
-- Données : lecture par `/api/s3/read` (`store=data`, `src/services/storage/dataStore.ts`) ; jamais d'accès S3 direct.
-  `mobile/mobile.json` chargé par `useMobileData` au lancement, au retour au premier plan et sur « Refresh ».
+- Démarrage : `GET /api/whoami` d'abord (`src/services/environment/`), relance toutes les minutes et au retour au
+  premier plan. Écran bloquant `AppUnavailable.vue` en cas de refus, de clé absente ou refusée, de contrat incompatible.
+- **Hors ligne** (choix de Michel) : proxy injoignable avec une clé déjà rangée → l'app s'ouvre quand même
+  (`appUsable`), sous l'environnement du coffre (`storedEnvId`), avec les dernières données gardées ; bandeau d'état
+  dans `App.vue`.
+- Stockage de l'iPhone : `browserStorage.ts`, localStorage préfixé `ht:<envId>:` (`mobile`, `currencies`, `mex.queue`,
+  `mex.lastCard`).
+- Données : lecture et écriture par `/api/s3/read` et `/api/s3/write` (`store=data`, `src/services/storage/dataStore.ts`) ;
+  jamais d'accès S3 direct. `mobile/mobile.json` et les devises de `settings/exchangeRates.json` : `src/services/mobile/mobileData.ts`
+  (partagés par les onglets, rechargés à la connexion, au retour au premier plan et sur « Refresh »).
+- Saisies : `src/services/mobile/expenseQueue.ts`. Rangées d'abord sur l'iPhone, puis envoyées dès que le proxy répond :
+  `events/PWA-MEX_<AAAAMMJJHHMMSS>_<id>.json` (`MOBILE_EXPENSE_SAVED`, nom fixé au premier essai) puis
+  `events/control/<eventId>.json` (`STORAGE_PULL_REQUESTED` version 2, `source: "iphone"`). Une saisie quitte la file quand
+  `mobile.json` la publie (clientUpdatedAt au moins aussi récent) ; refus lu dans `events/status/<nom>`, affiché tel quel,
+  « Discard » dans History.
+- Écrans : barre d'onglets en bas (`App.vue`, sans routeur) : Add (`AddView.vue`), Budget (`BudgetView.vue`), History
+  (`HistoryView.vue`).
 - Le Mac calcule tout (réel, budget, non confirmé) : l'app n'additionne rien.
 - Pièces reprises de HomeTools (`proxyClient`, `proxyKeyVault`, `environmentGuard`, `contracts/environment.ts`,
   `contracts/read.ts`) : garder le même comportement ; une correction faite d'un côté se reporte de l'autre.
@@ -45,8 +58,9 @@ dans `../hometools-proxy`. Chacun a son propre CLAUDE.md.
 ## Étapes prévues (lot M2 côté iPhone)
 
 1. Squelette : connexion, clé, lecture de `mobile.json` (fait).
-2. Saisie d'une dépense avec file d'attente hors ligne (`MOBILE_EXPENSE_SAVED`, `STORAGE_PULL_REQUESTED`).
-3. Réel face au budget : barres par sous-catégorie, part « non confirmé » hachurée, vue mois et vue année.
+2. Saisie d'une dépense avec file d'attente hors ligne, devise modifiable, onglets, History (fait).
+3. Modification et annulation d'une saisie depuis History (`MOBILE_EXPENSE_SAVED`, `MOBILE_EXPENSE_CANCELLED`).
+4. Réel face au budget : barres par sous-catégorie, part « non confirmé » hachurée, vue mois et vue année.
 
 ## Règles de travail
 

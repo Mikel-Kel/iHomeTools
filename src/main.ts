@@ -4,13 +4,17 @@ import App from "./App.vue";
 import "@/assets/theme.css";
 
 import { startEnvironmentWatch } from "@/services/environment/environmentGuard";
+import { startExpenseQueue } from "@/services/mobile/expenseQueue";
+import { startMobileDataWatch } from "@/services/mobile/mobileData";
 import { log } from "@/utils/logger";
 
 /* ============================
    Démarrage
 
    /api/whoami part en premier (environmentGuard.ts) ; les
-   écrans attendent l'environnement (App.vue).
+   écrans attendent l'environnement, ou celui du coffre hors
+   ligne (App.vue). Données mobiles et file d'attente
+   s'ouvrent dès qu'il est connu.
 ============================ */
 
 const app =
@@ -26,4 +30,6 @@ window.addEventListener("unhandledrejection", (e) => {
 
 app.mount("#app");
 
+startMobileDataWatch();
+startExpenseQueue();
 startEnvironmentWatch();

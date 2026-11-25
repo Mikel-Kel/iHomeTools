@@ -225,3 +225,57 @@ export function readMobileData(
       })),
   };
 }
+
+/* =========================
+   Devises acceptées par le Mac
+
+   CHF et celles de settings/exchangeRates.json (clés de
+   rates) ; contrat § 4.3.
+========================= */
+
+export const EXCHANGE_RATES_FOLDER = "settings";
+
+export const EXCHANGE_RATES_FILE = "exchangeRates.json";
+
+export const BASE_CURRENCY = "CHF";
+
+export function readExchangeCurrencies(
+  raw: unknown
+): string[] {
+  const rates =
+    asObject(asObject(raw)?.rates);
+
+  return [
+    BASE_CURRENCY,
+    ...Object.keys(rates ?? {})
+      .filter(code => /^[A-Z]{3}$/.test(code) && code !== BASE_CURRENCY)
+      .sort(),
+  ];
+}
+
+/* =========================
+   Événements PWA-MEX_<AAAAMMJJHHMMSS>_<id>.json (§ 4)
+
+   MOBILE_EXPENSE_SAVED : création ou modification ; un
+   événement dont clientUpdatedAt n'est pas plus récent que
+   la base ne change rien (envoi répété sans effet). Pas de
+   tag. Statut dans events/status/<même nom>.
+========================= */
+
+export const MOBILE_EXPENSE_EVENT_TRIGRAM = "MEX";
+
+export const MOBILE_EXPENSE_EVENT_VERSION = 1;
+
+export interface MobileExpenseSave {
+  id: string;
+
+  /* Heure locale de l'iPhone, AAAA-MM-JJTHH:MM:SS. */
+  paidAt: string;
+
+  cardId: number;
+  amount: number;
+  currency: string;
+  subCategoryId: number;
+  comment: string;
+  clientUpdatedAt: string;
+}
