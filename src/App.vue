@@ -5,6 +5,8 @@ import {
   type Component,
 } from "vue";
 
+import homeIcon from "@/assets/icons/home.png";
+
 import AppUnavailable from "@/components/AppUnavailable.vue";
 import AddView from "@/views/AddView.vue";
 import BudgetView from "@/views/BudgetView.vue";
@@ -126,6 +128,15 @@ const version =
 <template>
   <template v-if="appUsable()">
     <header class="app-header">
+      <img
+        class="app-icon"
+        :src="homeIcon"
+        width="48"
+        height="48"
+        alt=""
+        draggable="false"
+      >
+
       <div class="title">
         <h1>iHomeTools</h1>
 
@@ -203,13 +214,25 @@ const version =
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 0.75rem;
 
   padding: calc(var(--safe-top) + 10px) var(--gutter) 10px;
 
   border-bottom: 1px solid var(--border);
 
   background: var(--surface);
+}
+
+.app-icon {
+  flex: none;
+
+  user-select: none;
+}
+
+/* Titre à gauche, à côté de l'icône ; Refresh poussé à droite. */
+.title {
+  flex: 1;
+  min-width: 0;
 }
 
 .title h1 {
