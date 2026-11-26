@@ -48,7 +48,7 @@ import {
    En-tête (environnement, version, « Refresh »), bandeau
    d'état (connexion, maintenance, file), bandeau de nouvelle
    version (« Reload », « Later »), onglet courant,
-   barre d'onglets en bas (Add, Budget, History).
+   barre d'onglets en bas (Add, Follow-up, Expenses).
 
    Les écrans s'ouvrent dès que l'environnement est connu,
    par whoami ou, hors ligne, par le coffre de la clé
@@ -59,8 +59,8 @@ type Tab = "add" | "budget" | "history";
 
 const tabs: { value: Tab; label: string; view: Component }[] = [
   { value: "add", label: "Add", view: AddView },
-  { value: "budget", label: "Budget", view: BudgetView },
-  { value: "history", label: "History", view: HistoryView },
+  { value: "budget", label: "Follow-up", view: BudgetView },
+  { value: "history", label: "Expenses", view: HistoryView },
 ];
 
 const tab =
@@ -121,7 +121,7 @@ const banner =
     if (rejected.value) {
       return {
         tone: "error",
-        text: `${rejected.value} ${rejected.value === 1 ? "entry" : "entries"} rejected: see History.`,
+        text: `${rejected.value} ${rejected.value === 1 ? "entry" : "entries"} rejected: see Expenses.`,
       };
     }
 

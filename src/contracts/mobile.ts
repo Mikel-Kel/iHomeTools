@@ -21,6 +21,9 @@ import {
      month : budget, actual, pending (mois courant) ;
      year  : budget, budgetToDate (janvier au mois courant
              compris), actual, pending.
+     months : 12 derniers mois glissants (AAAA-MM), du plus
+             ancien au mois courant (égal à month) ; liste
+             vide dans un fichier plus ancien (v0.5).
    pending : saisies iPhone non annulées dont le mouvement
    n'est pas libéré (« non confirmé »).
 
@@ -62,6 +65,11 @@ export interface MonthFigures {
   pending: number;
 }
 
+export interface MonthHistoryFigures extends MonthFigures {
+  /* AAAA-MM */
+  month: string;
+}
+
 export interface YearFigures {
   budget: number;
   budgetToDate: number;
@@ -82,6 +90,7 @@ export interface MobileSubCategory {
 
   month: MonthFigures;
   year: YearFigures;
+  months: MonthHistoryFigures[];
 }
 
 export interface LinkedMovement {
@@ -167,6 +176,19 @@ function readOwners(
     .filter((owner): owner is string => owner !== null);
 }
 
+function readMonths(
+  value: unknown
+): MonthHistoryFigures[] {
+  return objects(value)
+    .map(item => ({
+      month: asString(item.month),
+      budget: asNumber(item.budget),
+      actual: asNumber(item.actual),
+      pending: asNumber(item.pending),
+    }))
+    .filter(item => /^\d{4}-\d{2}$/.test(item.month));
+}
+
 function readMovement(
   value: unknown
 ): LinkedMovement | null {
@@ -243,6 +265,8 @@ export function readMobileData(
             actual: asNumber(year?.actual),
             pending: asNumber(year?.pending),
           },
+
+          months: readMonths(sub.months),
         };
       })
       .sort((a, b) => a.order - b.order),

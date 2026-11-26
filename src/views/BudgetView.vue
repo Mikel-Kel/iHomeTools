@@ -19,6 +19,10 @@ import {
 
 import { deviceOwner } from "@/services/environment/environmentState";
 
+import { warningPercent } from "@/services/settings/followUpSettings";
+
+import type { MobileSubCategory } from "@/contracts/mobile";
+
 import { formatAmount } from "@/utils/amountFormat";
 
 /* =========================
@@ -31,15 +35,35 @@ import { formatAmount } from "@/utils/amountFormat";
    réel / budget, non confirmé (« unconfirmed »), barre
    (BudgetBar.vue).
 
-   Month : mois courant du Mac (today).
-   Year : réel face au budget à date (janvier au mois courant
-   compris, repère de la barre), budget de l'année en petit ;
-   la barre va jusqu'au budget de l'année.
+   Month : mois courant du Mac (today) ; flèches vers les 12
+   derniers mois publiés (months, du plus ancien au courant).
+   L'écran rouvre toujours sur le mois courant ; fichier sans
+   months : mois courant seulement.
+   Year to date : réel face au budget à date (janvier au mois
+   courant compris) ; la barre va jusqu'au budget à date, le
+   rouge commence au-delà.
+   Year : réel face au budget de l'année ; la barre va
+   jusqu'au budget de l'année, repère au budget à date.
+   Chaque vue ne montre que son budget : rien n'est répété
+   de l'une à l'autre.
+
+   Écart au budget de la vue, par ligne : budget − consommé
+   (réel + non confirmé), « N left » ou « N over ». Seul
+   calcul de l'app, jamais de total. Vert sous (100 − p) %
+   du budget, orange de (100 − p) % à 100 %, rouge au-delà ;
+   p = followUp.warningPercent d'AppParameters.json (10 par
+   défaut). Sans budget : rien.
 
    Période retenue sur l'iPhone (ht:<envId>:budget.period).
 ========================= */
 
-type Period = "month" | "year";
+type Period = "month" | "ytd" | "year";
+
+const PERIODS: { value: Period; label: string }[] = [
+  { value: "month", label: "Month" },
+  { value: "ytd", label: "Year to date" },
+  { value: "year", label: "Year" },
+];
 
 const PERIOD_NAME = "budget.period";
 
@@ -47,7 +71,7 @@ const DISPLAY_LOCALE = "en-GB";
 
 const period =
   ref<Period>(
-    readStored(PERIOD_NAME, raw => (raw === "year" ? "year" : raw === "month" ? "month" : null)) ?? "month"
+    readStored(PERIOD_NAME, raw => PERIODS.find(item => item.value === raw)?.value ?? null) ?? "month"
   );
 
 watch(
@@ -57,6 +81,46 @@ watch(
     writeStored(PERIOD_NAME, value);
   }
 );
+
+/* Mois montré dans la vue Month (AAAA-MM) ; null : mois courant. */
+const selectedMonth =
+  ref<string | null>(null);
+
+/* Mois publiés, du plus ancien au courant : la liste est la même pour toutes les sous-catégories. */
+const monthKeys =
+  computed(() => ownSubCategories.value[0]?.months.map(item => item.month) ?? []);
+
+/* Position du mois montré ; mois inconnu (nouveau mois publié) : le courant. */
+const monthIndex =
+  computed(() => {
+    const index =
+      selectedMonth.value
+        ? monthKeys.value.indexOf(selectedMonth.value)
+        : -1;
+
+    return index >= 0
+      ? index
+      : monthKeys.value.length - 1;
+  });
+
+const currentMonthShown =
+  computed(() => monthIndex.value >= monthKeys.value.length - 1);
+
+function moveMonth(
+  step: number
+) {
+  const index =
+    monthIndex.value + step;
+
+  if (index < 0 || index >= monthKeys.value.length) {
+    return;
+  }
+
+  selectedMonth.value =
+    index === monthKeys.value.length - 1
+      ? null
+      : monthKeys.value[index];
+}
 
 /* Mois courant du Mac (AAAA-MM-JJ) ; null si illisible. */
 const today =
@@ -69,10 +133,25 @@ const today =
       : null;
   });
 
+/* Premier jour du mois montré dans la vue Month. */
+const shownMonth =
+  computed(() => {
+    const match =
+      currentMonthShown.value
+        ? null
+        : /^(\d{4})-(\d{2})$/.exec(monthKeys.value[monthIndex.value] ?? "");
+
+    return match
+      ? new Date(Number(match[1]), Number(match[2]) - 1, 1)
+      : today.value;
+  });
+
 const title =
   computed(() => {
     const date =
-      today.value;
+      period.value === "month"
+        ? shownMonth.value
+        : today.value;
 
     if (!date) {
       return period.value === "month" ? "This month" : "This year";
@@ -88,16 +167,21 @@ const subtitle =
     const date =
       today.value;
 
-    if (period.value !== "year" || !date) {
+    if (period.value === "month" || !date) {
       return "";
     }
 
     const month =
       date.toLocaleDateString(DISPLAY_LOCALE, { month: "long" });
 
-    return date.getMonth() === 0
-      ? "Budget to date: January"
-      : `Budget to date: January to ${month}`;
+    const toDate =
+      date.getMonth() === 0
+        ? "January"
+        : `January to ${month}`;
+
+    return period.value === "ytd"
+      ? `Year to date: ${toDate}`
+      : "Full year";
   });
 
 interface BudgetRow {
@@ -107,16 +191,60 @@ interface BudgetRow {
   actual: number;
   pending: number;
 
-  /* Budget comparé au réel : du mois, ou à date pour l'année. */
+  /* Budget comparé au réel, fin de la barre et début du rouge. */
   reference: number;
-
-  /* Fin de la barre : budget du mois ou de l'année. */
   budget: number;
 
   marker: number | null;
+}
 
-  /* Budget de l'année, affiché en petit (vue année). */
-  yearBudget: number | null;
+type DeltaTone = "positive" | "warning" | "negative";
+
+interface Delta {
+  text: string;
+  tone: DeltaTone;
+}
+
+/* Écart au budget de la vue ; null sans budget. */
+function delta(
+  row: BudgetRow
+): Delta | null {
+  if (row.reference <= 0) {
+    return null;
+  }
+
+  const consumed =
+    row.actual + row.pending;
+
+  const gap =
+    row.reference - consumed;
+
+  if (gap < 0) {
+    return { text: `${formatAmount(-gap, 0)} over`, tone: "negative" };
+  }
+
+  return {
+    text: `${formatAmount(gap, 0)} left`,
+    tone: consumed >= row.reference * (1 - warningPercent.value / 100) ? "warning" : "positive",
+  };
+}
+
+/* Montants du mois montré : month pour le mois courant, sinon l'élément de months (absent : zéro). */
+function monthFigures(
+  sub: MobileSubCategory
+): Pick<BudgetRow, "actual" | "pending" | "reference" | "budget"> {
+  const figures =
+    currentMonthShown.value
+      ? sub.month
+      : sub.months.find(item => item.month === monthKeys.value[monthIndex.value]) ??
+        { budget: 0, actual: 0, pending: 0 };
+
+  return {
+    actual: figures.actual,
+    pending: figures.pending,
+    reference: figures.budget,
+    budget: figures.budget,
+  };
 }
 
 const rows =
@@ -127,26 +255,36 @@ const rows =
             id: sub.subCategoryId,
             label: sub.label,
             category: sub.categoryLabel,
-            actual: sub.month.actual,
-            pending: sub.month.pending,
-            reference: sub.month.budget,
-            budget: sub.month.budget,
+            ...monthFigures(sub),
             marker: null,
-            yearBudget: null,
           }
-        : {
-            id: sub.subCategoryId,
-            label: sub.label,
-            category: sub.categoryLabel,
-            actual: sub.year.actual,
-            pending: sub.year.pending,
-            reference: sub.year.budgetToDate,
-            budget: sub.year.budget,
-            marker: sub.year.budgetToDate,
-            yearBudget: sub.year.budget,
-          }
+        : period.value === "ytd"
+          ? {
+              id: sub.subCategoryId,
+              label: sub.label,
+              category: sub.categoryLabel,
+              actual: sub.year.actual,
+              pending: sub.year.pending,
+              reference: sub.year.budgetToDate,
+              budget: sub.year.budgetToDate,
+              marker: null,
+            }
+          : {
+              id: sub.subCategoryId,
+              label: sub.label,
+              category: sub.categoryLabel,
+              actual: sub.year.actual,
+              pending: sub.year.pending,
+              reference: sub.year.budget,
+              budget: sub.year.budget,
+              marker: sub.year.budgetToDate,
+            }
     )
   );
+
+/* Lignes affichées, avec leur écart au budget. */
+const lines =
+  computed(() => rows.value.map(row => ({ ...row, delta: delta(row) })));
 
 /* Publication du Mac (UTC) → JJ.MM.AAAA HH:MM, heure de l'iPhone. */
 const generatedAt =
@@ -201,29 +339,47 @@ const generatedAt =
         aria-label="Period"
       >
         <button
+          v-for="item in PERIODS"
+          :key="item.value"
           type="button"
           class="period"
-          :class="{ selected: period === 'month' }"
-          :aria-pressed="period === 'month'"
-          @click="period = 'month'"
+          :class="{ selected: period === item.value }"
+          :aria-pressed="period === item.value"
+          @click="period = item.value"
         >
-          Month
-        </button>
-
-        <button
-          type="button"
-          class="period"
-          :class="{ selected: period === 'year' }"
-          :aria-pressed="period === 'year'"
-          @click="period = 'year'"
-        >
-          Year
+          {{ item.label }}
         </button>
       </div>
 
       <section class="card">
         <header class="card-header">
-          <h2>{{ title }}</h2>
+          <div class="title-row">
+            <button
+              v-if="period === 'month'"
+              type="button"
+              class="month-nav"
+              aria-label="Previous month"
+              :disabled="monthIndex <= 0"
+              @click="moveMonth(-1)"
+            >
+              ‹
+            </button>
+
+            <h2 :class="{ centered: period === 'month' }">
+              {{ title }}
+            </h2>
+
+            <button
+              v-if="period === 'month'"
+              type="button"
+              class="month-nav"
+              aria-label="Next month"
+              :disabled="currentMonthShown"
+              @click="moveMonth(1)"
+            >
+              ›
+            </button>
+          </div>
 
           <p
             v-if="subtitle"
@@ -235,7 +391,7 @@ const generatedAt =
 
         <ul class="rows">
           <li
-            v-for="row in rows"
+            v-for="row in lines"
             :key="row.id"
             class="row"
           >
@@ -252,9 +408,10 @@ const generatedAt =
                 </span>
 
                 <span
-                  v-if="row.yearBudget !== null && row.yearBudget > 0"
-                  class="row-meta"
-                >Year {{ formatAmount(row.yearBudget, 0) }}</span>
+                  v-if="row.delta"
+                  class="row-delta"
+                  :class="row.delta.tone"
+                >{{ row.delta.text }}</span>
               </span>
             </div>
 
@@ -328,7 +485,7 @@ const generatedAt =
 
 .periods {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 4px;
 
   padding: 4px;
@@ -372,10 +529,45 @@ const generatedAt =
   margin: 0 0 4px;
 }
 
+.title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .card-header h2 {
+  flex: 1;
   margin: 0;
 
   font-size: var(--font-size-lg);
+}
+
+.card-header h2.centered {
+  text-align: center;
+}
+
+.month-nav {
+  flex: none;
+
+  width: 40px;
+  height: 40px;
+
+  border: none;
+  border-radius: 10px;
+
+  background: var(--btn-secondary-bg);
+  color: var(--text);
+
+  font-size: 1.5rem;
+  line-height: 1;
+
+  cursor: pointer;
+}
+
+.month-nav:disabled {
+  opacity: 0.35;
+
+  cursor: default;
 }
 
 .subtitle {
@@ -436,6 +628,23 @@ const generatedAt =
 
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+
+.row-delta {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.row-delta.positive {
+  color: var(--positive);
+}
+
+.row-delta.warning {
+  color: var(--warning);
+}
+
+.row-delta.negative {
+  color: var(--negative);
 }
 
 .row-pending {

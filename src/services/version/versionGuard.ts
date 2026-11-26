@@ -7,6 +7,7 @@ import {
   APP_PARAMETERS_FILE,
   APP_PARAMETERS_FOLDER,
   readReferenceVersion,
+  readWarningPercent,
 } from "@/contracts/appParameters";
 
 import {
@@ -15,6 +16,8 @@ import {
 } from "@/services/environment/environmentState";
 
 import { sending } from "@/services/mobile/expenseQueue";
+
+import { setWarningPercent } from "@/services/settings/followUpSettings";
 
 import { readDataJson } from "@/services/storage/dataStore";
 
@@ -29,6 +32,8 @@ import { log } from "@/utils/logger";
    - dès que l'environnement est établi ;
    - au retour de l'app au premier plan ;
    - toutes les 30 minutes tant que la page est visible.
+   Même lecture : marge d'alerte de Follow-up
+   (followUpSettings.ts).
    Au plus un contrôle abouti toutes les 5 minutes ; une
    référence absente ou illisible, ou un proxy injoignable,
    ne bloque rien et est réessayé au déclencheur suivant.
@@ -101,10 +106,15 @@ export async function checkAppVersion() {
   running = true;
 
   try {
+    const raw =
+      await readDataJson(`${APP_PARAMETERS_FOLDER}/${APP_PARAMETERS_FILE}`);
+
+    if (raw !== null) {
+      setWarningPercent(readWarningPercent(raw));
+    }
+
     const reference =
-      readReferenceVersion(
-        await readDataJson(`${APP_PARAMETERS_FOLDER}/${APP_PARAMETERS_FILE}`)
-      );
+      readReferenceVersion(raw);
 
     if (!reference) {
       log.warn("[Version] no reference version");

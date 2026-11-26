@@ -7,6 +7,7 @@ import { startAppStatusWatch } from "@/services/appStatus/appStatusGuard";
 import { startEnvironmentWatch } from "@/services/environment/environmentGuard";
 import { startExpenseQueue } from "@/services/mobile/expenseQueue";
 import { startMobileDataWatch } from "@/services/mobile/mobileData";
+import { startFollowUpSettings } from "@/services/settings/followUpSettings";
 import { startVersionWatch } from "@/services/version/versionGuard";
 import { log } from "@/utils/logger";
 
@@ -34,6 +35,7 @@ window.addEventListener("unhandledrejection", (e) => {
 app.mount("#app");
 
 startMobileDataWatch();
+startFollowUpSettings();
 startExpenseQueue();
 startAppStatusWatch();
 startVersionWatch();

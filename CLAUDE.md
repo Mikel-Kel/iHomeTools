@@ -38,7 +38,7 @@ dans `../hometools-proxy`. Chacun a son propre CLAUDE.md.
   (`appUsable`), sous l'environnement du coffre (`storedEnvId`), avec les dernières données gardées ; bandeau d'état
   dans `App.vue`.
 - Version (mêmes règles que HomeTools, `src/services/version/versionGuard.ts`) : `__APP_VERSION__` comparée à
-  `iHomeToolsVersion` de `settings/AppParameters.json` (écrite par myTooling à chaque Deliver, seule clé lue, rien gardé) ;
+  `iHomeToolsVersion` de `settings/AppParameters.json` (écrite par myTooling à chaque Deliver ; avec `followUp.warningPercent`, seules clés lues) ;
   contrôle à la connexion, au retour au premier plan et toutes les 30 min (au plus toutes les 5 min). App plus ancienne :
   bandeau « Reload » (attend la fin d'un envoi, recharge avec `?v=<version>`) / « Later » (30 min). Référence absente
   ou illisible : rien.
@@ -63,12 +63,18 @@ dans `../hometools-proxy`. Chacun a son propre CLAUDE.md.
   `ExpenseSheet.vue` : saisie ouverte ou refusée, tout modifiable et annulable (deux touchers) ; liée, sous-catégorie et
   commentaire seulement ; allouée, annulée, en cours d'envoi ou d'annulation : lecture seule. Heure du paiement jamais
   modifiable (choix de Michel).
-- Écrans : barre d'onglets en bas (`App.vue`, sans routeur) : Add (`AddView.vue`), Budget (`BudgetView.vue`), History
-  (`HistoryView.vue`).
-- Le Mac calcule tout (réel, budget, non confirmé) : l'app n'additionne rien.
-- Budget (`BudgetView.vue`, barres `BudgetBar.vue`) : Month (mois courant du Mac) ou Year (réel face au budget à date,
-  repère vertical, barre jusqu'au budget de l'année, budget de l'année en petit) ; choix gardé (`budget.period`).
-  Réel plein, non confirmé hachuré, seule la part au-delà du budget en rouge ; aucun « reste » calculé.
+- Écrans : barre d'onglets en bas (`App.vue`, sans routeur) : Add (`AddView.vue`), Follow-up
+  (`BudgetView.vue`), Expenses (`HistoryView.vue`) ; noms internes Budget et History dans le code.
+- Le Mac calcule tout (réel, budget, non confirmé) : l'app ne fait aucun total ni agrégat. Seule exception (choix de
+  Michel) : l'écart d'une ligne de Follow-up, budget − (réel + non confirmé).
+- Budget (`BudgetView.vue`, barres `BudgetBar.vue`) : Month (mois courant du Mac, flèches ‹ › vers les 12 derniers mois
+  de `months`, contrat v0.5, jamais additionnés ; rouvre sur le mois courant), Year to date (réel face au budget
+  à date, barre jusqu'à lui) ou Year (réel face au budget de l'année, repère vertical au budget à date ; rien de
+  répété entre les deux vues) ; choix gardé (`budget.period` : `month`, `ytd`, `year`).
+  Réel plein, non confirmé hachuré, seule la part au-delà du budget en rouge. Écart « N left » / « N over » au budget
+  de la vue : vert sous (100 − p) %, orange jusqu'à 100 %, rouge au-delà, rien sans budget ; p =
+  `followUp.warningPercent` d'`AppParameters.json` (10 par défaut), lu avec la version, gardé
+  (`followUp.warningPercent`, `src/services/settings/followUpSettings.ts`).
 - Propriétaire (contrat mobile v0.4) : propriétaire de l'iPhone = `owner` de whoami (contrat 1.8.0), gardé pour l'usage
   hors ligne (`ht:<envId>:owner`). Add ne propose que ses cartes (`owner`) et ses sous-catégories (`owners`), Budget ne
   montre que ses sous-catégories (montants communs au ménage), History que ses saisies (`ownPaymentMeans`,
@@ -88,6 +94,7 @@ dans `../hometools-proxy`. Chacun a son propre CLAUDE.md.
 3. Modification et annulation d'une saisie depuis History (`MOBILE_EXPENSE_SAVED`, `MOBILE_EXPENSE_CANCELLED`) (fait).
 4. Réel face au budget : barres par sous-catégorie, part « non confirmé » hachurée, vue mois et vue année (fait).
 5. Contrat mobile v0.4 : couleur des cartes, sous-catégories par propriétaire (fait).
+6. Contrat mobile v0.5 : navigation sur les 12 derniers mois ; saisies annulées purgées chaque nuit par le Mac (fait).
 
 ## Règles de travail
 
