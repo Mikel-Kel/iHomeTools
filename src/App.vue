@@ -12,6 +12,8 @@ import AddView from "@/views/AddView.vue";
 import BudgetView from "@/views/BudgetView.vue";
 import HistoryView from "@/views/HistoryView.vue";
 
+import { maintenance } from "@/services/appStatus/appStatusGuard";
+
 import { environmentChecking } from "@/services/environment/environmentGuard";
 
 import {
@@ -33,11 +35,19 @@ import {
   refreshMobileData,
 } from "@/services/mobile/mobileData";
 
+import {
+  availableVersion,
+  declineVersion,
+  reloadApp,
+  reloading,
+} from "@/services/version/versionGuard";
+
 /* =========================
    Cadre de l'app
 
    En-tête (environnement, version, « Refresh »), bandeau
-   d'état de la connexion et de la file, onglet courant,
+   d'état (connexion, maintenance, file), bandeau de nouvelle
+   version (« Reload », « Later »), onglet courant,
    barre d'onglets en bas (Add, Budget, History).
 
    Les écrans s'ouvrent dès que l'environnement est connu,
@@ -94,6 +104,20 @@ const banner =
       };
     }
 
+    if (maintenance.value) {
+      const since =
+        sinceText(maintenance.value.since);
+
+      return {
+        tone: "warning",
+        text:
+          "Under maintenance" +
+          (since ? ` since ${since}` : "") +
+          (maintenance.value.message ? `: ${maintenance.value.message}` : "") +
+          ". Entries are kept on this iPhone and sent afterwards.",
+      };
+    }
+
     if (rejected.value) {
       return {
         tone: "error",
@@ -117,6 +141,26 @@ const banner =
 
     return null;
   });
+
+/* Début de la maintenance (UTC) → JJ.MM HH:MM, heure de l'iPhone. */
+function sinceText(
+  value: string | null
+): string {
+  const time =
+    Date.parse(value ?? "");
+
+  if (Number.isNaN(time)) {
+    return "";
+  }
+
+  const date =
+    new Date(time);
+
+  const pad =
+    (part: number) => String(part).padStart(2, "0");
+
+  return `${pad(date.getDate())}.${pad(date.getMonth() + 1)} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
 
 const envLabel =
   computed(() => environment.value?.label ?? storedEnvId.value ?? "");
@@ -162,6 +206,34 @@ const version =
     >
       {{ banner.text }}
     </p>
+
+    <div
+      v-if="availableVersion"
+      class="banner version"
+      role="status"
+    >
+      <span class="version-text">
+        {{ reloading ? "Finishing sending, then reloading…" : `Version ${availableVersion} available.` }}
+      </span>
+
+      <button
+        type="button"
+        class="button"
+        :disabled="reloading"
+        @click="declineVersion"
+      >
+        Later
+      </button>
+
+      <button
+        type="button"
+        class="button primary"
+        :disabled="reloading"
+        @click="reloadApp"
+      >
+        Reload
+      </button>
+    </div>
 
     <main class="content">
       <p
@@ -266,6 +338,26 @@ const version =
 .banner.error {
   background: var(--surface-soft);
   color: var(--negative);
+}
+
+.banner.version {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.version-text {
+  flex: 1;
+  min-width: 0;
+
+  font-weight: 600;
+}
+
+.banner.version .button {
+  min-height: 36px;
 }
 
 /* Place de la barre d'onglets. */

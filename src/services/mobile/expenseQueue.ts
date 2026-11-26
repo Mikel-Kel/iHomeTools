@@ -42,6 +42,8 @@ import {
   writeDataJson,
 } from "@/services/storage/dataStore";
 
+import { maintenance } from "@/services/appStatus/appStatusGuard";
+
 import { log } from "@/utils/logger";
 
 /* =========================
@@ -77,6 +79,9 @@ import { log } from "@/utils/logger";
    le Mac l'a reçu. Une annulation la quitte aussi sur le
    statut de succès (saisie inconnue du Mac). Un envoi répété
    est sans effet côté Mac.
+
+   Maintenance annoncée (appStatusGuard.ts) : rien ne part,
+   les saisies restent sur l'iPhone ; envoi dès sa fin.
 
    Envoi après chaque changement, quand l'environnement est
    établi, au retour au premier plan, au retour du réseau et
@@ -374,7 +379,7 @@ async function checkStatus(
 ========================= */
 
 export async function flushQueue() {
-  if (sending.value || !environmentEstablished()) {
+  if (sending.value || !environmentEstablished() || maintenance.value) {
     return;
   }
 
@@ -622,6 +627,16 @@ export function startExpenseQueue() {
 
     (current, previous) => {
       if (current && !previous) {
+        void flushQueue();
+      }
+    }
+  );
+
+  watch(
+    maintenance,
+
+    current => {
+      if (!current) {
         void flushQueue();
       }
     }

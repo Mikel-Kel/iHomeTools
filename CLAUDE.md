@@ -37,6 +37,15 @@ dans `../hometools-proxy`. Chacun a son propre CLAUDE.md.
 - **Hors ligne** (choix de Michel) : proxy injoignable avec une clé déjà rangée → l'app s'ouvre quand même
   (`appUsable`), sous l'environnement du coffre (`storedEnvId`), avec les dernières données gardées ; bandeau d'état
   dans `App.vue`.
+- Version (mêmes règles que HomeTools, `src/services/version/versionGuard.ts`) : `__APP_VERSION__` comparée à
+  `iHomeToolsVersion` de `settings/AppParameters.json` (écrite par myTooling à chaque Deliver, seule clé lue, rien gardé) ;
+  contrôle à la connexion, au retour au premier plan et toutes les 30 min (au plus toutes les 5 min). App plus ancienne :
+  bandeau « Reload » (attend la fin d'un envoi, recharge avec `?v=<version>`) / « Later » (30 min). Référence absente
+  ou illisible : rien.
+- Maintenance (`settings/appStatus.json`, contrat `../Backend/docs/app-status-contract.md`,
+  `src/services/appStatus/appStatusGuard.ts`) : **pas de blocage** (choix de Michel), bandeau avec le message ; la file
+  ne part pas pendant la maintenance, envoi dès sa fin. Contrôle toutes les 5 min, toutes les minutes pendant une
+  maintenance.
 - Stockage de l'iPhone : `browserStorage.ts`, localStorage préfixé `ht:<envId>:` (`mobile`, `currencies`, `mex.queue`,
   `mex.lastCard`, `owner`, `subCategoryLabels`, `budget.period`).
 - Données : lecture et écriture par `/api/s3/read` et `/api/s3/write` (`store=data`, `src/services/storage/dataStore.ts`) ;
@@ -68,7 +77,7 @@ dans `../hometools-proxy`. Chacun a son propre CLAUDE.md.
   neutre si `null`). Sous-catégorie retirée : dernier libellé connu (`subCategoryLabel`, `subCategoryLabels`). Après
   un refus, `mobile.json` est relu.
 - Pièces reprises de HomeTools (`proxyClient`, `proxyKeyVault`, `environmentGuard`, `contracts/environment.ts`,
-  `contracts/read.ts`) : garder le même comportement ; une correction faite d'un côté se reporte de l'autre.
+  `contracts/read.ts`, `contracts/appStatus.ts`) : garder le même comportement ; une correction faite d'un côté se reporte de l'autre.
 - Interface en anglais, commentaires en français. Champs à 16 px au moins (pas de zoom Safari), zones sûres
   (`--safe-top`, `--safe-bottom`), mode sombre selon l'iPhone.
 
