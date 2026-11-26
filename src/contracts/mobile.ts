@@ -26,7 +26,11 @@ import {
 
    owner (cartes et saisies) : propriétaire de la carte
    (MobileOwner, § 3.2), null s'il n'est pas choisi ; l'app
-   ne montre que ceux de son appareil (§ 5).
+   ne montre que ceux de son appareil (§ 5). Sous-catégories
+   attribuées par propriétaire (owners, § 3.3) : l'app ne
+   propose et ne montre dans Budget que celles du sien.
+   Libellé d'une carte unique par propriétaire seulement :
+   une carte s'identifie par cardId.
 ========================= */
 
 export const MOBILE_FOLDER = "mobile";
@@ -42,6 +46,10 @@ export interface PaymentMean {
   label: string;
   holder: string;
   owner: string | null;
+
+  /* Couleur de la carte (#RRGGBB), null si aucune. */
+  color: string | null;
+
   kind: CardKind;
 
   /* Devise proposée par défaut (carte, sinon compte). */
@@ -68,6 +76,10 @@ export interface MobileSubCategory {
   categoryLabel: string;
   nature: string;
   order: number;
+
+  /* Propriétaires à qui elle est attribuée (§ 3.3). */
+  owners: string[];
+
   month: MonthFigures;
   year: YearFigures;
 }
@@ -136,6 +148,25 @@ function readOwner(
   return asString(value).trim() || null;
 }
 
+function readColor(
+  value: unknown
+): string | null {
+  const color =
+    asString(value).trim().toUpperCase();
+
+  return /^#[0-9A-F]{6}$/.test(color)
+    ? color
+    : null;
+}
+
+function readOwners(
+  value: unknown
+): string[] {
+  return asArray(value)
+    .map(readOwner)
+    .filter((owner): owner is string => owner !== null);
+}
+
 function readMovement(
   value: unknown
 ): LinkedMovement | null {
@@ -178,6 +209,7 @@ export function readMobileData(
         label: asString(mean.label),
         holder: asString(mean.holder),
         owner: readOwner(mean.owner),
+        color: readColor(mean.color),
         kind: (mean.kind === "credit" ? "credit" : "debit") as CardKind,
         currency: asString(mean.currency, "CHF"),
       })),
@@ -197,6 +229,7 @@ export function readMobileData(
           categoryLabel: asString(sub.categoryLabel),
           nature: asString(sub.nature),
           order: asNumber(sub.order),
+          owners: readOwners(sub.owners),
 
           month: {
             budget: asNumber(month?.budget),

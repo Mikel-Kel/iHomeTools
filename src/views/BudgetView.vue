@@ -12,7 +12,12 @@ import {
   writeStored,
 } from "@/services/environment/browserStorage";
 
-import { mobileData } from "@/services/mobile/mobileData";
+import {
+  mobileData,
+  ownSubCategories,
+} from "@/services/mobile/mobileData";
+
+import { deviceOwner } from "@/services/environment/environmentState";
 
 import { formatAmount } from "@/utils/amountFormat";
 
@@ -20,8 +25,9 @@ import { formatAmount } from "@/utils/amountFormat";
    Réel face au budget
 
    Montants publiés par le Mac (mobile.json, contrat § 6), en
-   CHF, commun à tous les iPhones ; l'app n'additionne rien.
-   Une ligne par sous-catégorie mobile, dans l'ordre du Mac :
+   CHF, communs à tout le ménage ; l'app n'additionne rien.
+   Une ligne par sous-catégorie attribuée au propriétaire de
+   l'iPhone (§ 5), dans l'ordre du Mac :
    réel / budget, non confirmé (« unconfirmed »), barre
    (BudgetBar.vue).
 
@@ -51,9 +57,6 @@ watch(
     writeStored(PERIOD_NAME, value);
   }
 );
-
-const subCategories =
-  computed(() => mobileData.value?.subCategories ?? []);
 
 /* Mois courant du Mac (AAAA-MM-JJ) ; null si illisible. */
 const today =
@@ -118,7 +121,7 @@ interface BudgetRow {
 
 const rows =
   computed<BudgetRow[]>(() =>
-    subCategories.value.map(sub =>
+    ownSubCategories.value.map(sub =>
       period.value === "month"
         ? {
             id: sub.subCategoryId,
@@ -178,10 +181,17 @@ const generatedAt =
     </p>
 
     <p
-      v-else-if="!subCategories.length"
+      v-else-if="!deviceOwner"
       class="state"
     >
-      No sub-category offered yet: choose them in HomeTools, Master data.
+      This iPhone has no owner: declare it in the proxy identities (environments.json).
+    </p>
+
+    <p
+      v-else-if="!ownSubCategories.length"
+      class="state"
+    >
+      No expense categories assigned to you yet: choose them in HomeTools › Master data.
     </p>
 
     <template v-else>

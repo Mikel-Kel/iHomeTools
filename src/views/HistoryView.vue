@@ -17,6 +17,7 @@ import {
 import {
   mobileData,
   ownEntries,
+  subCategoryLabel,
 } from "@/services/mobile/mobileData";
 
 import type {
@@ -124,7 +125,7 @@ function editRules(
     return {
       scope: "classification",
       cancellable: false,
-      note: "Linked to a bank movement: only the sub-category and the comment can change.",
+      note: "Linked to a bank movement: only the expense category and the comment can change.",
     };
   }
 
@@ -146,19 +147,30 @@ function entryExpense(
   };
 }
 
-const cardLabels =
+/* Cartes publiées (toutes, propriétaire compris) : libellé et couleur. */
+const cards =
   computed(() =>
     new Map(
-      (mobileData.value?.paymentMeans ?? []).map(mean => [mean.cardId, mean.label])
+      (mobileData.value?.paymentMeans ?? []).map(mean => [mean.cardId, mean])
     )
   );
 
-const subCategoryLabels =
-  computed(() =>
-    new Map(
-      (mobileData.value?.subCategories ?? []).map(sub => [sub.subCategoryId, sub.label])
-    )
-  );
+function cardLabel(
+  id: number
+): string {
+  return cards.value.get(id)?.label ?? `Card ${id}`;
+}
+
+function cardStyle(
+  id: number
+): Record<string, string> | undefined {
+  const color =
+    cards.value.get(id)?.color;
+
+  return color
+    ? { "--card-color": color }
+    : undefined;
+}
 
 const rows =
   computed<HistoryRow[]>(() => {
@@ -270,7 +282,7 @@ function shortDateTime(
         >
           <span class="row-main">
             <span class="row-title">
-              {{ subCategoryLabels.get(row.expense.subCategoryId) ?? `Sub-category ${row.expense.subCategoryId}` }}
+              {{ subCategoryLabel(row.expense.subCategoryId) }}
             </span>
 
             <span class="row-amount">
@@ -280,7 +292,11 @@ function shortDateTime(
 
           <span class="row-meta">
             <span>
-              {{ shortDateTime(row.expense.paidAt) }} · {{ cardLabels.get(row.expense.cardId) ?? `Card ${row.expense.cardId}` }}
+              <span
+                class="card-dot"
+                :style="cardStyle(row.expense.cardId)"
+              />
+              {{ shortDateTime(row.expense.paidAt) }} · {{ cardLabel(row.expense.cardId) }}
               <template v-if="row.expense.comment"> · {{ row.expense.comment }}</template>
             </span>
 
@@ -406,6 +422,19 @@ function shortDateTime(
 .row-meta {
   color: var(--text-soft);
   font-size: var(--font-size-sm);
+}
+
+.card-dot {
+  display: inline-block;
+
+  width: 10px;
+  height: 10px;
+  margin-right: 4px;
+
+  border-radius: 50%;
+
+  background: var(--card-color, var(--text-muted));
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15);
 }
 
 .pills {

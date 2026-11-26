@@ -38,7 +38,7 @@ dans `../hometools-proxy`. Chacun a son propre CLAUDE.md.
   (`appUsable`), sous l'environnement du coffre (`storedEnvId`), avec les dernières données gardées ; bandeau d'état
   dans `App.vue`.
 - Stockage de l'iPhone : `browserStorage.ts`, localStorage préfixé `ht:<envId>:` (`mobile`, `currencies`, `mex.queue`,
-  `mex.lastCard`, `owner`).
+  `mex.lastCard`, `owner`, `subCategoryLabels`, `budget.period`).
 - Données : lecture et écriture par `/api/s3/read` et `/api/s3/write` (`store=data`, `src/services/storage/dataStore.ts`) ;
   jamais d'accès S3 direct. `mobile/mobile.json` et les devises de `settings/exchangeRates.json` : `src/services/mobile/mobileData.ts`
   (partagés par les onglets, rechargés à la connexion, au retour au premier plan et sur « Refresh »).
@@ -57,9 +57,16 @@ dans `../hometools-proxy`. Chacun a son propre CLAUDE.md.
 - Écrans : barre d'onglets en bas (`App.vue`, sans routeur) : Add (`AddView.vue`), Budget (`BudgetView.vue`), History
   (`HistoryView.vue`).
 - Le Mac calcule tout (réel, budget, non confirmé) : l'app n'additionne rien.
-- Cartes nominatives : propriétaire de l'iPhone = `owner` de whoami (contrat 1.8.0), gardé pour l'usage hors ligne
-  (`ht:<envId>:owner`). Add ne propose que ses cartes et History ne montre que ses saisies (`owner` de `mobile.json`,
-  `ownPaymentMeans` / `ownEntries`) ; Budget reste commun. Sans propriétaire : aucune carte, message explicite.
+- Budget (`BudgetView.vue`, barres `BudgetBar.vue`) : Month (mois courant du Mac) ou Year (réel face au budget à date,
+  repère vertical, barre jusqu'au budget de l'année, budget de l'année en petit) ; choix gardé (`budget.period`).
+  Réel plein, non confirmé hachuré, seule la part au-delà du budget en rouge ; aucun « reste » calculé.
+- Propriétaire (contrat mobile v0.4) : propriétaire de l'iPhone = `owner` de whoami (contrat 1.8.0), gardé pour l'usage
+  hors ligne (`ht:<envId>:owner`). Add ne propose que ses cartes (`owner`) et ses sous-catégories (`owners`), Budget ne
+  montre que ses sous-catégories (montants communs au ménage), History que ses saisies (`ownPaymentMeans`,
+  `ownSubCategories`, `ownEntries`). Sans propriétaire, carte ou sous-catégorie : message explicite, pas de saisie.
+  Une carte s'identifie par `cardId` (libellé unique par propriétaire seulement) ; pastille de sa couleur (`color`,
+  neutre si `null`). Sous-catégorie retirée : dernier libellé connu (`subCategoryLabel`, `subCategoryLabels`). Après
+  un refus, `mobile.json` est relu.
 - Pièces reprises de HomeTools (`proxyClient`, `proxyKeyVault`, `environmentGuard`, `contracts/environment.ts`,
   `contracts/read.ts`) : garder le même comportement ; une correction faite d'un côté se reporte de l'autre.
 - Interface en anglais, commentaires en français. Champs à 16 px au moins (pas de zoom Safari), zones sûres
@@ -70,7 +77,8 @@ dans `../hometools-proxy`. Chacun a son propre CLAUDE.md.
 1. Squelette : connexion, clé, lecture de `mobile.json` (fait).
 2. Saisie d'une dépense avec file d'attente hors ligne, devise modifiable, onglets, History (fait).
 3. Modification et annulation d'une saisie depuis History (`MOBILE_EXPENSE_SAVED`, `MOBILE_EXPENSE_CANCELLED`) (fait).
-4. Réel face au budget : barres par sous-catégorie, part « non confirmé » hachurée, vue mois et vue année.
+4. Réel face au budget : barres par sous-catégorie, part « non confirmé » hachurée, vue mois et vue année (fait).
+5. Contrat mobile v0.4 : couleur des cartes, sous-catégories par propriétaire (fait).
 
 ## Règles de travail
 

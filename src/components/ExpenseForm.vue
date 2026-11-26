@@ -16,6 +16,8 @@ import {
   currencies,
   mobileData,
   ownPaymentMeans,
+  ownSubCategories,
+  subCategoryLabel,
 } from "@/services/mobile/mobileData";
 
 /* =========================
@@ -34,8 +36,11 @@ import {
 
    Champs modifiables (scope) : all ; classification
    (saisie liée : sous-catégorie et commentaire, § 4.1) ;
-   none (lecture seule). Seules les cartes du propriétaire de
-   l'iPhone sont proposées (§ 5). Devise de la carte à chaque
+   none (lecture seule). Seules les cartes et les
+   sous-catégories du propriétaire de l'iPhone sont
+   proposées (§ 5) ; bouton d'une carte sur le fond de sa
+   couleur (texte noir ou blanc selon le contraste), neutre
+   sans couleur. Devise de la carte à chaque
    choix de carte, modifiable (CHF et devises du fichier des
    cours).
 
@@ -80,6 +85,7 @@ const LAST_CARD = "mex.lastCard";
 interface CardOption {
   cardId: number;
   label: string;
+  color: string | null;
   currency: string;
 }
 
@@ -130,24 +136,54 @@ const cards =
       {
         cardId: initialId,
         label: known?.label ?? `Card ${initialId}`,
+        color: known?.color ?? null,
         currency: known?.currency ?? props.initial!.currency,
       },
     ];
   });
 
-/* Sous-catégories proposées, plus celle de la saisie modifiée si elle n'en fait plus partie. */
+/* Sous-catégories du propriétaire, plus celle de la saisie modifiée si elle n'en fait plus partie. */
 const subCategories =
   computed<SubCategoryOption[]>(() => {
     const offered: SubCategoryOption[] =
-      mobileData.value?.subCategories ?? [];
+      ownSubCategories.value;
 
     const initialId =
       props.initial?.subCategoryId;
 
     return initialId === undefined || offered.some(sub => sub.subCategoryId === initialId)
       ? offered
-      : [...offered, { subCategoryId: initialId, label: `Sub-category ${initialId}` }];
+      : [...offered, { subCategoryId: initialId, label: subCategoryLabel(initialId) }];
   });
+
+/* Texte noir ou blanc, le plus lisible sur le fond (luminance relative, WCAG). */
+function readableText(
+  hex: string
+): string {
+  const [r, g, b] =
+    [1, 3, 5]
+      .map(start => parseInt(hex.slice(start, start + 2), 16) / 255)
+      .map(channel =>
+        channel <= 0.04045
+          ? channel / 12.92
+          : ((channel + 0.055) / 1.055) ** 2.4
+      );
+
+  const luminance =
+    0.2126 * r + 0.7152 * g + 0.0722 * b;
+
+  return luminance > 0.179
+    ? "#000000"
+    : "#FFFFFF";
+}
+
+function cardStyle(
+  color: string | null
+): Record<string, string> | undefined {
+  return color
+    ? { "--card-bg": color, "--card-text": readableText(color) }
+    : undefined;
+}
 
 function cardCurrency(
   id: number | null
@@ -338,18 +374,19 @@ watch(
     <section class="field">
       <h2>Card</h2>
 
-      <div class="choices">
+      <div class="choices cards">
         <button
           v-for="card in cards"
           :key="card.cardId"
           type="button"
           class="choice"
-          :class="{ selected: card.cardId === cardId }"
+          :class="{ selected: card.cardId === cardId, colored: !!card.color }"
+          :style="cardStyle(card.color)"
           :aria-pressed="card.cardId === cardId"
           :disabled="!amountEditable"
           @click="selectCard(card.cardId)"
         >
-          {{ card.label }}
+          <span class="card-label">{{ card.label }}</span>
         </button>
       </div>
     </section>
@@ -357,7 +394,7 @@ watch(
     <!-- Sub-category -->
 
     <section class="field">
-      <h2>Sub-category</h2>
+      <h2>Expense category</h2>
 
       <div class="choices grid">
         <button
@@ -384,7 +421,7 @@ watch(
         v-model="comment"
         type="text"
         :maxlength="COMMENT_MAX"
-        placeholder="Optional"
+        placeholder="Please comment"
         enterkeyhint="done"
         autocomplete="off"
         :disabled="!classificationEditable"
@@ -481,6 +518,41 @@ watch(
 
   background: var(--primary-soft);
   color: var(--primary);
+}
+
+/* Cartes : une seule ligne sur toute la largeur, même taille, libellé tronqué (…). */
+.choices.cards {
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+}
+
+.cards .choice {
+  min-width: 0;
+  padding: 6px 8px;
+}
+
+.card-label {
+  display: block;
+
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Carte colorée : fond de sa couleur ; choisie, anneau autour du bouton. */
+.choice.colored {
+  border-color: rgba(0, 0, 0, 0.15);
+
+  background: var(--card-bg);
+  color: var(--card-text);
+}
+
+.choice.colored.selected {
+  box-shadow:
+    0 0 0 2px var(--bg),
+    0 0 0 4px var(--primary);
 }
 
 .choice:disabled {

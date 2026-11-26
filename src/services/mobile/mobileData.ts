@@ -15,6 +15,7 @@ import {
   readMobileData,
   type MobileData,
   type MobileEntry,
+  type MobileSubCategory,
   type PaymentMean,
 } from "@/contracts/mobile";
 
@@ -43,6 +44,10 @@ import { log } from "@/utils/logger";
    ht:<envId>:currencies) : l'app s'ouvre hors ligne avec les
    dernières données reçues.
 
+   Libellés des sous-catégories déjà vues gardés à part
+   (ht:<envId>:subCategoryLabels) : une saisie dont la
+   sous-catégorie a été retirée ou clôturée garde son nom.
+
    Rechargés dès que l'environnement est établi, au retour au
    premier plan et sur demande (refresh). Les données déjà
    affichées restent en place pendant un rechargement et
@@ -53,6 +58,8 @@ const MOBILE_CACHE = "mobile";
 
 const CURRENCIES_CACHE = "currencies";
 
+const LABELS_CACHE = "subCategoryLabels";
+
 export const mobileData =
   shallowRef<MobileData | null>(null);
 
@@ -60,14 +67,20 @@ export const currencies =
   ref<string[]>([BASE_CURRENCY]);
 
 /*
-  Cartes et saisies du propriétaire de l'iPhone (contrat
-  mobile, § 5) ; aucune sans propriétaire. Le réel et le
-  budget restent communs.
+  Cartes, sous-catégories et saisies du propriétaire de
+  l'iPhone (contrat mobile, § 5) ; aucune sans propriétaire.
+  Les montants du réel et du budget restent communs.
 */
 export const ownPaymentMeans =
   computed<PaymentMean[]>(() =>
     (mobileData.value?.paymentMeans ?? [])
       .filter(mean => deviceOwner.value !== null && mean.owner === deviceOwner.value)
+  );
+
+export const ownSubCategories =
+  computed<MobileSubCategory[]>(() =>
+    (mobileData.value?.subCategories ?? [])
+      .filter(sub => deviceOwner.value !== null && sub.owners.includes(deviceOwner.value))
   );
 
 export const ownEntries =
@@ -86,6 +99,56 @@ export const mobileMissing =
 export const mobileError =
   ref("");
 
+/* Libellés connus, par subCategoryId. */
+const knownLabels =
+  shallowRef<Record<string, string>>({});
+
+function readLabels(
+  raw: unknown
+): Record<string, string> {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return {};
+  }
+
+  return Object.fromEntries(
+    Object.entries(raw)
+      .filter((pair): pair is [string, string] => typeof pair[1] === "string" && pair[1] !== "")
+  );
+}
+
+function rememberLabels(
+  data: MobileData
+) {
+  const labels =
+    { ...knownLabels.value };
+
+  let changed =
+    false;
+
+  for (const sub of data.subCategories) {
+    if (sub.label && labels[sub.subCategoryId] !== sub.label) {
+      labels[sub.subCategoryId] = sub.label;
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    knownLabels.value = labels;
+    writeStored(LABELS_CACHE, labels);
+  }
+}
+
+/* Libellé publié, sinon le dernier connu, sinon « Expense category <id> ». */
+export function subCategoryLabel(
+  id: number
+): string {
+  return (
+    mobileData.value?.subCategories.find(sub => sub.subCategoryId === id)?.label ??
+    knownLabels.value[id] ??
+    `Expense category ${id}`
+  );
+}
+
 /* Abonnés prévenus après chaque lecture réussie (file d'attente). */
 const listeners =
   new Set<(data: MobileData) => void>();
@@ -97,11 +160,15 @@ export function onMobileData(
 }
 
 function restoreCache() {
+  knownLabels.value =
+    readStored(LABELS_CACHE, readLabels) ?? {};
+
   const cached =
     readStored(MOBILE_CACHE, readMobileData);
 
   if (cached) {
     mobileData.value = cached;
+    rememberLabels(cached);
   }
 
   const cachedCurrencies =
@@ -147,6 +214,7 @@ export async function refreshMobileData() {
 
       mobileData.value = data;
       writeStored(MOBILE_CACHE, raw);
+      rememberLabels(data);
 
       listeners.forEach(listener => listener(data));
     }

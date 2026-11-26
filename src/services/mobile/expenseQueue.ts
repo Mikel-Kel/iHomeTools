@@ -32,7 +32,10 @@ import {
   storedEnvId,
 } from "@/services/environment/environmentState";
 
-import { onMobileData } from "@/services/mobile/mobileData";
+import {
+  onMobileData,
+  refreshMobileData,
+} from "@/services/mobile/mobileData";
 
 import {
   readDataJson,
@@ -358,6 +361,9 @@ async function checkStatus(
       step: "rejected",
       message: asString(status.message, "Rejected"),
     });
+
+    /* Cartes ou sous-catégories peut-être changées entre-temps (contrat § 4.3). */
+    void refreshMobileData();
   } else if (status?.status === "success" && item.action === "cancel") {
     remove(item);
   }
