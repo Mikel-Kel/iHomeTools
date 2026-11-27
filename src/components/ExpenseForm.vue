@@ -19,6 +19,7 @@ import {
 import {
   currencies,
   mobileData,
+  ownEntries,
   ownPaymentMeans,
   parties,
   ownSubCategories,
@@ -41,7 +42,12 @@ import {
 
    Nouvelle saisie (initial absent) : dernière carte utilisée
    (ht:<envId>:mex.lastCard), sinon la première ; retenue à
-   chaque enregistrement. Modification : valeurs de la
+   chaque enregistrement. Sous-catégorie proposée : la seule
+   possible, sinon la plus utilisée parmi les saisies du
+   propriétaire publiées dans mobile.json (60 derniers jours,
+   hors annulées), dans l'ordre du Mac à égalité ; aucune
+   sans saisie. Reproposée après un changement de carte qui
+   l'efface et après chaque enregistrement. Modification : valeurs de la
    saisie ; sa carte et sa sous-catégorie restent proposées
    même si le Mac ne les propose plus (valeur inchangée
    acceptée, contrat § 4.1).
@@ -307,12 +313,61 @@ const subCategories =
       : [...offered, { subCategoryId: initialId, label: subCategoryLabel(initialId) }];
   });
 
-/* Autre carte : une sous-catégorie qui ne correspond plus est effacée. */
-watch(subCategories, list => {
-  if (subCategoryId.value !== null && !list.some(sub => sub.subCategoryId === subCategoryId.value)) {
-    subCategoryId.value = null;
+/* Nouvelle saisie : la seule sous-catégorie proposée, sinon la plus utilisée ; null sans saisie. */
+function defaultSubCategory(
+  list: SubCategoryOption[]
+): number | null {
+  if (props.initial || !list.length) {
+    return null;
   }
-});
+
+  if (list.length === 1) {
+    return list[0].subCategoryId;
+  }
+
+  const uses =
+    new Map<number, number>();
+
+  for (const entry of ownEntries.value) {
+    if (entry.state !== "cancelled") {
+      uses.set(entry.subCategoryId, (uses.get(entry.subCategoryId) ?? 0) + 1);
+    }
+  }
+
+  let best: number | null = null;
+  let bestUses = 0;
+
+  for (const sub of list) {
+    const count =
+      uses.get(sub.subCategoryId) ?? 0;
+
+    if (count > bestUses) {
+      best = sub.subCategoryId;
+      bestUses = count;
+    }
+  }
+
+  return best;
+}
+
+/* Autre carte : une sous-catégorie qui ne correspond plus est effacée, puis reproposée. */
+watch(
+  subCategories,
+
+  list => {
+    if (subCategoryId.value !== null && !list.some(sub => sub.subCategoryId === subCategoryId.value)) {
+      subCategoryId.value = null;
+    }
+
+    if (subCategoryId.value === null) {
+      subCategoryId.value = defaultSubCategory(list);
+    }
+  },
+
+  {
+    immediate: true,
+  }
+);
 
 /* Texte noir ou blanc, le plus lisible sur le fond (luminance relative, WCAG). */
 function readableText(
@@ -473,7 +528,7 @@ function reset() {
   refreshToday();
   paidDate.value = today.value;
   amountText.value = "";
-  subCategoryId.value = null;
+  subCategoryId.value = defaultSubCategory(subCategories.value);
   comment.value = "";
   merchantId.value = null;
   merchantText.value = "";

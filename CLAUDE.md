@@ -83,7 +83,8 @@ dans `../hometools-proxy`. Chacun a son propre CLAUDE.md.
   En-tête de période commun : `PeriodHeader.vue`.
 - Hors suivi (contrat mobile v0.10) : cartes et catégories `tracked: false`, dépenses personnelles sans budget ni
   liaison. Add propose les sous-catégories suivies comme la carte choisie (changer de carte efface une sous-catégorie
-  qui ne correspond plus) ; saisie `recorded` (« Recorded »), tout modifiable et annulable. Follow-up : une seule carte
+  qui ne correspond plus) et choisit d'avance la seule possible, sinon la plus utilisée dans les saisies du
+  propriétaire de `mobile.json` ; saisie `recorded` (« Recorded »), tout modifiable et annulable. Follow-up : une seule carte
   (pas de rupture de présentation, choix de Michel) : catégories suivies, puis intertitre « Personal », mêmes lignes
   sans barre (« No budget ») et total `untrackedTotals` du propriétaire (calculé par le Mac), dans les trois vues
   (Year = Year to date).
