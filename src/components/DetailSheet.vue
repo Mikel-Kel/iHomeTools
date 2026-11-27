@@ -30,9 +30,10 @@ import { formatAmount } from "@/utils/amountFormat";
    d'abord). Aucun total : le montant de la ligne de
    Follow-up en est la somme.
 
-   Texte : commentaire, sinon texte de la banque ; commerçant
-   en dessous s'il est différent. Non confirmé : marque
-   « Unconfirmed ».
+   Texte : commentaire, sinon texte de la banque, et montant ;
+   en dessous, date suivie du commerçant s'il est différent.
+   Non confirmé : marque « Unconfirmed ». Fond alterné d'une
+   ligne à l'autre.
    Relu à l'ouverture et quand mobile.json change pendant que
    le panneau est ouvert (mobileDetails.ts).
 ========================= */
@@ -192,14 +193,7 @@ watch(
             class="line"
           >
             <div class="line-main">
-              <span class="line-text">
-                {{ mainText(line) }}
-
-                <span
-                  v-if="merchantText(line)"
-                  class="line-meta"
-                >{{ merchantText(line) }}</span>
-              </span>
+              <span class="line-text">{{ mainText(line) }}</span>
 
               <span class="line-amount">
                 {{ formatAmount(line.amount) }}
@@ -207,7 +201,9 @@ watch(
             </div>
 
             <div class="line-sub">
-              <span class="line-meta">{{ displayDate(line.date) }}</span>
+              <span class="line-meta">
+                {{ displayDate(line.date) }}<template v-if="merchantText(line)"> · {{ merchantText(line) }}</template>
+              </span>
 
               <span
                 v-if="line.kind === 'pending'"
@@ -303,7 +299,7 @@ watch(
 
 .lines {
   margin: 0;
-  padding: 4px 14px;
+  padding: 0;
 
   border: 1px solid var(--border);
   border-radius: 14px;
@@ -311,20 +307,20 @@ watch(
   background: var(--surface);
 
   list-style: none;
+
+  overflow: hidden;
 }
 
 .line {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
 
-  padding: 10px 0;
-
-  border-top: 1px solid var(--border);
+  padding: 7px 14px;
 }
 
-.line:first-child {
-  border-top: none;
+.line:nth-child(even) {
+  background: var(--primary-soft);
 }
 
 .line-main,
@@ -336,17 +332,17 @@ watch(
 }
 
 .line-text {
-  display: flex;
-  flex-direction: column;
-
   min-width: 0;
 
   overflow-wrap: anywhere;
 }
 
 .line-meta {
+  min-width: 0;
+
   color: var(--text-soft);
   font-size: var(--font-size-sm);
+  overflow-wrap: anywhere;
 }
 
 .line-amount {
