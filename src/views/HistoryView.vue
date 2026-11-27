@@ -47,7 +47,7 @@ import { formatAmount } from "@/utils/amountFormat";
    Toucher une saisie ouvre ExpenseSheet.vue. Règles (§ 4.1,
    § 4.2) : saisie ouverte ou refusée, tout modifiable et
    annulable ; liée, sous-catégorie et commentaire seulement,
-   non annulable ; allouée, annulée, en cours d'envoi ou
+   annulable (le Mac défait la liaison, contrat § 4.2) ; allouée, annulée, en cours d'envoi ou
    d'annulation : lecture seule.
 ========================= */
 
@@ -124,8 +124,8 @@ function editRules(
   if (entry?.state === "linked") {
     return {
       scope: "classification",
-      cancellable: false,
-      note: "Linked to a bank movement: only the expense category and the comment can change.",
+      cancellable: true,
+      note: "Linked to a bank movement: only the expense category and the comment can change. Cancelling removes the link.",
     };
   }
 
