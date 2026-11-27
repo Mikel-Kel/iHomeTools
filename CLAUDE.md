@@ -51,7 +51,7 @@ dans `../hometools-proxy`. Chacun a son propre CLAUDE.md.
 - Données : lecture et écriture par `/api/s3/read` et `/api/s3/write` (`store=data`, `src/services/storage/dataStore.ts`) ;
   jamais d'accès S3 direct. `mobile/mobile.json` et les devises de `settings/exchangeRates.json` : `src/services/mobile/mobileData.ts`
   (partagés par les onglets, rechargés à la connexion, au retour au premier plan et sur « Refresh » ; `mobile.json` seul,
-  sans « Loading… », toutes les minutes tant que l'app est à l'écran et après le succès d'une saisie envoyée).
+  sans « Loading… », toutes les 15 secondes tant que l'app est à l'écran et après le succès d'une saisie envoyée).
   Parties de `settings/parties.json` (commerçant, contrat mobile v0.9, environ 440 Ko, lecteur `src/contracts/parties.ts`,
   copie réduite gardée) : relues seulement à la connexion, sur « Refresh » et après un refus du Mac.
 - Saisies : `src/services/mobile/expenseQueue.ts`. Création, modification et annulation rangées d'abord sur l'iPhone
@@ -83,10 +83,10 @@ dans `../hometools-proxy`. Chacun a son propre CLAUDE.md.
   En-tête de période commun : `PeriodHeader.vue`.
 - Hors suivi (contrat mobile v0.10) : cartes et catégories `tracked: false`, dépenses personnelles sans budget ni
   liaison. Add propose les sous-catégories suivies comme la carte choisie (changer de carte efface une sous-catégorie
-  qui ne correspond plus) ; saisie `recorded` (« Recorded »), tout modifiable et annulable. Follow-up : catégories
-  suivies seulement ; section « Personal » à part, sans barre : montant par sous-catégorie et total
-  `untrackedTotals` du propriétaire (calculé par le Mac), vues Month et Year to date ; vue Year : renvoi aux deux
-  autres (choix de Michel).
+  qui ne correspond plus) ; saisie `recorded` (« Recorded »), tout modifiable et annulable. Follow-up : une seule carte
+  (pas de rupture de présentation, choix de Michel) : catégories suivies, puis intertitre « Personal », mêmes lignes
+  sans barre (« No budget ») et total `untrackedTotals` du propriétaire (calculé par le Mac), dans les trois vues
+  (Year = Year to date).
 - Propriétaire (contrat mobile v0.4) : propriétaire de l'iPhone = `owner` de whoami (contrat 1.8.0), gardé pour l'usage
   hors ligne (`ht:<envId>:owner`). Add ne propose que ses cartes (`owner`) et ses sous-catégories (`owners`), Budget ne
   montre que ses sous-catégories (montants communs au ménage), History que ses saisies (`ownPaymentMeans`,
@@ -116,6 +116,8 @@ dans `../hometools-proxy`. Chacun a son propre CLAUDE.md.
     alias, sans casse ni accents) ou texte libre (`partyId` ou `partyName`, 100 caractères au plus), modifiable sur
     une saisie liée, affiché dans Expenses (fait).
 11. Contrat mobile v0.10 : cartes et catégories hors suivi, état `recorded`, section Personal de Follow-up (fait).
+12. Détail d'une sous-catégorie dans Follow-up (toucher une ligne : montants de la période, du plus récent au plus
+    ancien), lu dans `mobile/details.json` (contrat v0.11, Backend d'abord) (en attente du Backend).
 
 ## Backlog
 

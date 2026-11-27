@@ -63,8 +63,8 @@ import { log } from "@/utils/logger";
    premier plan et sur demande (refresh). Parties (fichier
    lourd) : seulement à la connexion, sur « Refresh » et
    après un refus du Mac. mobile.json seul,
-   sans « Loading… » : toutes les minutes tant que l'app est
-   à l'écran (release faite sur le Mac) et après un succès
+   sans « Loading… » : toutes les 15 secondes tant que l'app
+   est à l'écran (release faite sur le Mac) et après un succès
    d'une saisie envoyée (expenseQueue.ts). Les données déjà
    affichées restent en place pendant un rechargement et
    après un échec : l'écran ne clignote pas.
@@ -79,7 +79,7 @@ const LABELS_CACHE = "subCategoryLabels";
 const PARTIES_CACHE = "parties";
 
 const PERIODIC_RELOAD_MS =
-  60 * 1000;
+  15 * 1000;
 
 export const mobileData =
   shallowRef<MobileData | null>(null);

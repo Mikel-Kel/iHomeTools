@@ -59,10 +59,11 @@ import { formatAmount } from "@/utils/amountFormat";
    défaut). Sans budget : rien.
 
    Personal (contrat v0.10) : sous-catégories hors suivi,
-   dans une section à part, sans budget ni barre : montant par
-   sous-catégorie et total de untrackedTotals (calculé par le
-   Mac), vues Month (même mois montré) et Year to date ; vue
-   Year : section masquée, renvoi aux deux autres vues.
+   dans la même carte, après les suivies, sous l'intertitre
+   « Personal » : même présentation, sans budget ni barre,
+   puis le total de untrackedTotals (calculé par le Mac). Mois
+   montré pour Month, year.actual pour Year to date et Year
+   (identiques : aucune saisie dans le futur).
 
    Période retenue sur l'iPhone (ht:<envId>:budget.period).
 ========================= */
@@ -303,23 +304,19 @@ interface PersonalRow {
   actual: number;
 }
 
-/* Réel hors suivi de la vue : mois montré ou année à date ; vue Year : rien. */
+/* Réel hors suivi de la vue : mois montré, ou année (à date et entière, identiques). */
 const personalRows =
-  computed<PersonalRow[]>(() => {
-    if (period.value === "year") {
-      return [];
-    }
-
-    return ownUntrackedSubCategories.value.map(sub => ({
+  computed<PersonalRow[]>(() =>
+    ownUntrackedSubCategories.value.map(sub => ({
       id: sub.subCategoryId,
       label: sub.label,
       category: sub.categoryLabel,
       actual:
-        period.value === "ytd"
-          ? sub.year.actual
-          : monthFigures(sub).actual,
-    }));
-  });
+        period.value === "month"
+          ? monthFigures(sub).actual
+          : sub.year.actual,
+    }))
+  );
 
 /* Total publié par le Mac pour la vue ; null sans total. */
 const personalTotal =
@@ -327,11 +324,11 @@ const personalTotal =
     const totals =
       ownUntrackedTotals.value;
 
-    if (!totals || period.value === "year") {
+    if (!totals) {
       return null;
     }
 
-    if (period.value === "ytd") {
+    if (period.value !== "month") {
       return totals.year;
     }
 
@@ -405,10 +402,7 @@ const generatedAt =
         </button>
       </div>
 
-      <section
-        v-if="ownTrackedSubCategories.length"
-        class="card"
-      >
+      <section class="card">
         <PeriodHeader
           :title="title"
           :subtitle="subtitle"
@@ -458,71 +452,51 @@ const generatedAt =
               + {{ formatAmount(row.pending, 0) }} unconfirmed
             </span>
           </li>
+
+          <!-- Personal : hors suivi, sans budget -->
+
+          <li
+            v-if="personalRows.length"
+            class="group-title"
+          >
+            Personal
+          </li>
+
+          <li
+            v-for="row in personalRows"
+            :key="row.id"
+            class="row"
+            :class="{ empty: row.actual === 0 }"
+          >
+            <div class="row-main">
+              <span class="row-label">
+                {{ row.label }}
+                <span class="row-meta">{{ row.category }}</span>
+              </span>
+
+              <span class="row-amounts">
+                <span>
+                  {{ formatAmount(row.actual, 0) }}
+                  <span class="row-meta">· No budget</span>
+                </span>
+              </span>
+            </div>
+          </li>
+
+          <li
+            v-if="personalRows.length && personalTotal !== null"
+            class="row total"
+          >
+            <div class="row-main">
+              <span class="row-label">Total personal</span>
+
+              <span class="row-amounts">
+                {{ formatAmount(personalTotal, 0) }}
+              </span>
+            </div>
+          </li>
         </ul>
       </section>
-
-      <!-- Personal : hors suivi, sans budget -->
-
-      <template v-if="ownUntrackedSubCategories.length">
-        <h2 class="section-title">
-          Personal
-        </h2>
-
-        <p
-          v-if="period === 'year'"
-          class="section-note"
-        >
-          Personal: see Month or Year to date.
-        </p>
-
-        <section
-          v-else
-          class="card"
-        >
-          <PeriodHeader
-            v-if="!ownTrackedSubCategories.length"
-            :title="title"
-            :subtitle="subtitle"
-            :navigable="period === 'month'"
-            :can-previous="monthIndex > 0"
-            :can-next="!currentMonthShown"
-            @move="moveMonth"
-          />
-
-          <ul class="rows">
-            <li
-              v-for="row in personalRows"
-              :key="row.id"
-              class="row personal"
-              :class="{ empty: row.actual === 0 }"
-            >
-              <div class="row-main">
-                <span class="row-label">
-                  {{ row.label }}
-                  <span class="row-meta">{{ row.category }}</span>
-                </span>
-
-                <span class="row-amounts">
-                  {{ formatAmount(row.actual, 0) }}
-                </span>
-              </div>
-            </li>
-
-            <li
-              v-if="personalTotal !== null"
-              class="row personal total"
-            >
-              <div class="row-main">
-                <span class="row-label">Total</span>
-
-                <span class="row-amounts">
-                  {{ formatAmount(personalTotal, 0) }}
-                </span>
-              </div>
-            </li>
-          </ul>
-        </section>
-      </template>
 
       <ul
         v-if="ownTrackedSubCategories.length"
@@ -688,8 +662,10 @@ const generatedAt =
   color: var(--negative);
 }
 
-.section-title {
-  margin: 0.4rem 2px -0.4rem;
+.group-title {
+  padding: 14px 0 4px;
+
+  border-top: 1px solid var(--border);
 
   color: var(--text-soft);
   font-size: var(--font-size-sm);
@@ -698,19 +674,21 @@ const generatedAt =
   text-transform: uppercase;
 }
 
-.section-note {
-  margin: 0;
-  padding: 0 2px;
+.group-title:first-child {
+  padding-top: 4px;
 
-  color: var(--text-soft);
-  font-size: var(--font-size-sm);
+  border-top: none;
 }
 
-.row.personal.empty {
+.group-title + .row {
+  border-top: none;
+}
+
+.row.empty {
   color: var(--text-soft);
 }
 
-.row.personal.total {
+.row.total {
   border-top-width: 2px;
 
   font-weight: 700;
