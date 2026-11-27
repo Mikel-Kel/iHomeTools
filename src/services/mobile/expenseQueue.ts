@@ -35,6 +35,7 @@ import {
 import {
   onMobileData,
   refreshMobileData,
+  reloadMobileData,
 } from "@/services/mobile/mobileData";
 
 import {
@@ -371,6 +372,9 @@ async function checkStatus(
     void refreshMobileData();
   } else if (status?.status === "success" && item.action === "cancel") {
     remove(item);
+  } else if (status?.status === "success") {
+    /* Le Mac vient de republier mobile.json : la saisie quitte la file à sa lecture. */
+    void reloadMobileData();
   }
 }
 

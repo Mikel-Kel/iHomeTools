@@ -50,7 +50,8 @@ dans `../hometools-proxy`. Chacun a son propre CLAUDE.md.
   `mex.lastCard`, `owner`, `subCategoryLabels`, `budget.period`).
 - Données : lecture et écriture par `/api/s3/read` et `/api/s3/write` (`store=data`, `src/services/storage/dataStore.ts`) ;
   jamais d'accès S3 direct. `mobile/mobile.json` et les devises de `settings/exchangeRates.json` : `src/services/mobile/mobileData.ts`
-  (partagés par les onglets, rechargés à la connexion, au retour au premier plan et sur « Refresh »).
+  (partagés par les onglets, rechargés à la connexion, au retour au premier plan et sur « Refresh » ; `mobile.json` seul,
+  sans « Loading… », toutes les minutes tant que l'app est à l'écran et après le succès d'une saisie envoyée).
 - Saisies : `src/services/mobile/expenseQueue.ts`. Création, modification et annulation rangées d'abord sur l'iPhone
   (un élément par saisie, action `save` ou `cancel`, `clientUpdatedAt` toujours plus récent), puis envoyées dès que le
   proxy répond : `events/PWA-MEX_<AAAAMMJJHHMMSS>_<id>[_DEL].json` (`MOBILE_EXPENSE_SAVED` ou `MOBILE_EXPENSE_CANCELLED`,

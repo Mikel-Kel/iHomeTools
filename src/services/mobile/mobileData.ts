@@ -49,7 +49,10 @@ import { log } from "@/utils/logger";
    sous-catégorie a été retirée ou clôturée garde son nom.
 
    Rechargés dès que l'environnement est établi, au retour au
-   premier plan et sur demande (refresh). Les données déjà
+   premier plan et sur demande (refresh). mobile.json seul,
+   sans « Loading… » : toutes les minutes tant que l'app est
+   à l'écran (release faite sur le Mac) et après un succès
+   d'une saisie envoyée (expenseQueue.ts). Les données déjà
    affichées restent en place pendant un rechargement et
    après un échec : l'écran ne clignote pas.
 ========================= */
@@ -59,6 +62,9 @@ const MOBILE_CACHE = "mobile";
 const CURRENCIES_CACHE = "currencies";
 
 const LABELS_CACHE = "subCategoryLabels";
+
+const PERIODIC_RELOAD_MS =
+  60 * 1000;
 
 export const mobileData =
   shallowRef<MobileData | null>(null);
@@ -194,12 +200,18 @@ async function refreshCurrencies() {
   }
 }
 
-export async function refreshMobileData() {
-  if (mobileLoading.value || !environmentEstablished()) {
+let running = false;
+
+/* background : mobile.json seul, sans « Loading… ». */
+async function loadMobileData(
+  background: boolean
+) {
+  if (running || !environmentEstablished()) {
     return;
   }
 
-  mobileLoading.value = true;
+  running = true;
+  mobileLoading.value = !background;
 
   try {
     const raw =
@@ -221,7 +233,9 @@ export async function refreshMobileData() {
 
     mobileError.value = "";
 
-    await refreshCurrencies();
+    if (!background) {
+      await refreshCurrencies();
+    }
 
   } catch (err) {
     mobileError.value =
@@ -230,8 +244,18 @@ export async function refreshMobileData() {
         : String(err);
 
   } finally {
+    running = false;
     mobileLoading.value = false;
   }
+}
+
+export function refreshMobileData() {
+  return loadMobileData(false);
+}
+
+/* Relecture discrète de mobile.json (file d'attente, relecture périodique). */
+export function reloadMobileData() {
+  return loadMobileData(true);
 }
 
 /* Posé une fois au démarrage (main.ts). */
@@ -265,4 +289,10 @@ export function startMobileDataWatch() {
       void refreshMobileData();
     }
   });
+
+  window.setInterval(() => {
+    if (document.visibilityState === "visible") {
+      void reloadMobileData();
+    }
+  }, PERIODIC_RELOAD_MS);
 }
