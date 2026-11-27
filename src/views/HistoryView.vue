@@ -17,6 +17,7 @@ import {
 import {
   mobileData,
   ownEntries,
+  partyLabel,
   subCategoryLabel,
 } from "@/services/mobile/mobileData";
 
@@ -46,7 +47,7 @@ import { formatAmount } from "@/utils/amountFormat";
 
    Toucher une saisie ouvre ExpenseSheet.vue. Règles (§ 4.1,
    § 4.2) : saisie ouverte ou refusée, tout modifiable et
-   annulable ; liée, sous-catégorie et commentaire seulement,
+   annulable ; liée, sous-catégorie, commerçant et commentaire seulement,
    annulable (le Mac défait la liaison, contrat § 4.2) ; allouée, annulée, en cours d'envoi ou
    d'annulation : lecture seule.
 ========================= */
@@ -125,7 +126,7 @@ function editRules(
     return {
       scope: "classification",
       cancellable: true,
-      note: "Linked to a bank movement: only the expense category and the comment can change. Cancelling removes the link.",
+      note: "Linked to a bank movement: only the expense category, the merchant and the comment can change. Cancelling removes the link.",
     };
   }
 
@@ -143,6 +144,8 @@ function entryExpense(
     currency: entry.currency,
     subCategoryId: entry.subCategoryId,
     comment: entry.comment,
+    partyId: entry.partyId,
+    partyName: entry.partyName,
     clientUpdatedAt: entry.clientUpdatedAt,
   };
 }
@@ -173,6 +176,15 @@ function movementText(
   ]
     .filter(part => part !== "")
     .join(" · ");
+}
+
+/* Commerçant : partie (libellé actuel), sinon texte libre, sinon rien. */
+function merchantText(
+  expense: MobileExpenseSave
+): string {
+  return expense.partyId !== null
+    ? partyLabel(expense.partyId)
+    : expense.partyName ?? "";
 }
 
 /* Cartes publiées (toutes, propriétaire compris) : libellé et couleur. */
@@ -325,6 +337,7 @@ function shortDateTime(
                 :style="cardStyle(row.expense.cardId)"
               />
               {{ shortDateTime(row.expense.paidAt) }} · {{ cardLabel(row.expense.cardId) }}
+              <template v-if="merchantText(row.expense)"> · {{ merchantText(row.expense) }}</template>
               <template v-if="row.expense.comment"> · {{ row.expense.comment }}</template>
             </span>
 

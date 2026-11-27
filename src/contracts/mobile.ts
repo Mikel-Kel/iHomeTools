@@ -34,6 +34,11 @@ import {
    propose et ne montre dans Budget que celles du sien.
    Libellé d'une carte unique par propriétaire seulement :
    une carte s'identifie par cardId.
+
+   Commerçant d'une saisie (v0.9) : partyId (partie choisie)
+   ou partyName (texte libre), au plus l'un des deux ;
+   partyLabel : libellé actuel de partyId, null si la partie
+   n'existe plus. Fichier plus ancien : pas de commerçant.
 ========================= */
 
 export const MOBILE_FOLDER = "mobile";
@@ -113,6 +118,10 @@ export interface MobileEntry {
   allocated: boolean;
   clientUpdatedAt: string;
   movement: LinkedMovement | null;
+
+  partyId: number | null;
+  partyName: string | null;
+  partyLabel: string | null;
 }
 
 export interface MobileWarning {
@@ -187,6 +196,16 @@ function readMonths(
       pending: asNumber(item.pending),
     }))
     .filter(item => /^\d{4}-\d{2}$/.test(item.month));
+}
+
+/* Texte non vide, sinon null. */
+function readText(
+  value: unknown
+): string | null {
+  const text =
+    asString(value).trim();
+
+  return text || null;
 }
 
 function readMovement(
@@ -286,6 +305,9 @@ export function readMobileData(
         allocated: asBoolean(entry.allocated),
         clientUpdatedAt: asString(entry.clientUpdatedAt),
         movement: readMovement(entry.movement),
+        partyId: asNullableNumber(entry.partyId),
+        partyName: readText(entry.partyName),
+        partyLabel: readText(entry.partyLabel),
       }))
       .filter(entry => entry.id),
 
@@ -330,12 +352,14 @@ export function readExchangeCurrencies(
    MOBILE_EXPENSE_SAVED : création ou modification ; un
    événement dont clientUpdatedAt n'est pas plus récent que
    la base ne change rien (envoi répété sans effet). Pas de
-   tag. Saisie liée : seuls subCategoryId et comment peuvent
+   tag. Commerçant facultatif : partyId ou partyName (100
+   caractères au plus), au plus l'un des deux. Saisie liée :
+   seuls subCategoryId, comment et le commerçant peuvent
    changer ; saisie allouée ou annulée : refus.
 
-   MOBILE_EXPENSE_CANCELLED (suffixe _DEL) : annulation,
-   refusée pour une saisie liée ; saisie inconnue ou déjà
-   annulée : succès.
+   MOBILE_EXPENSE_CANCELLED (suffixe _DEL) : annulation ;
+   saisie liée : le Mac défait la liaison ; mouvement libéré :
+   refus ; saisie inconnue ou déjà annulée : succès.
 
    Statut dans events/status/<même nom>.
 ========================= */
@@ -357,8 +381,15 @@ export interface MobileExpenseSave {
   currency: string;
   subCategoryId: number;
   comment: string;
+
+  /* Commerçant : partie choisie ou texte libre, au plus l'un des deux. */
+  partyId: number | null;
+  partyName: string | null;
+
   clientUpdatedAt: string;
 }
+
+export const PARTY_NAME_MAX = 100;
 
 export interface MobileExpenseCancel {
   id: string;

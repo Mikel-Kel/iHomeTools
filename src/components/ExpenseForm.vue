@@ -7,6 +7,8 @@ import {
   watch,
 } from "vue";
 
+import MerchantField from "@/components/MerchantField.vue";
+
 import type { ExpenseValues } from "@/services/mobile/expenseQueue";
 
 import {
@@ -18,15 +20,21 @@ import {
   currencies,
   mobileData,
   ownPaymentMeans,
+  parties,
   ownSubCategories,
   subCategoryLabel,
 } from "@/services/mobile/mobileData";
 
+import {
+  searchKey,
+  tidyText,
+} from "@/utils/searchText";
+
 /* =========================
    Formulaire d'une dépense
 
-   Montant, devise, carte, sous-catégorie et commentaire
-   facultatif ; utilisé par Add (nouvelle saisie) et par
+   Montant, devise, carte, sous-catégorie, commerçant et
+   commentaire facultatifs ; utilisé par Add (nouvelle saisie) et par
    History (modification).
 
    Nouvelle saisie (initial absent) : dernière carte utilisée
@@ -44,8 +52,14 @@ import {
    est plus ancien) et aujourd'hui : le Mac refuse un
    paiement dans le futur. L'heure n'est jamais choisie.
 
+   Commerçant (MerchantField.vue, contrat v0.9) : partie
+   choisie (partyId), sinon texte tapé ; un texte égal au
+   libellé d'une partie (sans casse ni accents) devient cette
+   partie, un autre part comme partyName.
+
    Champs modifiables (scope) : all ; classification
-   (saisie liée : sous-catégorie et commentaire, § 4.1) ;
+   (saisie liée : sous-catégorie, commerçant et commentaire,
+   § 4.1) ;
    none (lecture seule). Seules les cartes et les
    sous-catégories du propriétaire de l'iPhone sont
    proposées (§ 5) ; bouton d'une carte sur le fond de sa
@@ -126,6 +140,37 @@ const subCategoryId =
 
 const comment =
   ref(props.initial?.comment ?? "");
+
+const merchantId =
+  ref<number | null>(props.initial?.partyId ?? null);
+
+const merchantText =
+  ref(props.initial?.partyName ?? "");
+
+/* Ce qui part au Mac : au plus l'un des deux. */
+const party =
+  computed<{ partyId: number | null; partyName: string | null }>(() => {
+    if (merchantId.value !== null) {
+      return { partyId: merchantId.value, partyName: null };
+    }
+
+    const name =
+      tidyText(merchantText.value);
+
+    if (!name) {
+      return { partyId: null, partyName: null };
+    }
+
+    const key =
+      searchKey(name);
+
+    const match =
+      parties.value.find(item => searchKey(item.label) === key);
+
+    return match
+      ? { partyId: match.id, partyName: null }
+      : { partyId: null, partyName: name };
+  });
 
 /* Jour local, AAAA-MM-JJ. */
 function dayText(
@@ -360,6 +405,8 @@ const changed =
       currency.value !== initial.currency ||
       subCategoryId.value !== initial.subCategoryId ||
       trimmedComment.value !== initial.comment ||
+      party.value.partyId !== initial.partyId ||
+      party.value.partyName !== initial.partyName ||
       (props.withDate && paidDate.value !== props.initialDate)
     );
   });
@@ -393,6 +440,7 @@ function save() {
     currency: currency.value,
     subCategoryId: subCategoryId.value!,
     comment: trimmedComment.value,
+    ...party.value,
   }, props.withDate ? paidDate.value : null);
 }
 
@@ -403,6 +451,8 @@ function reset() {
   amountText.value = "";
   subCategoryId.value = null;
   comment.value = "";
+  merchantId.value = null;
+  merchantText.value = "";
   currency.value = cardCurrency(cardId.value);
 }
 
@@ -538,6 +588,18 @@ watch(
           {{ sub.label }}
         </button>
       </div>
+    </section>
+
+    <!-- Merchant -->
+
+    <section class="field">
+      <h2>Merchant</h2>
+
+      <MerchantField
+        v-model:party-id="merchantId"
+        v-model:text="merchantText"
+        :disabled="!classificationEditable"
+      />
     </section>
 
     <!-- Comment -->

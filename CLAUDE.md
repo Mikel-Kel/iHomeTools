@@ -47,11 +47,13 @@ dans `../hometools-proxy`. Chacun a son propre CLAUDE.md.
   ne part pas pendant la maintenance, envoi dès sa fin. Contrôle toutes les 5 min, toutes les minutes pendant une
   maintenance.
 - Stockage de l'iPhone : `browserStorage.ts`, localStorage préfixé `ht:<envId>:` (`mobile`, `currencies`, `mex.queue`,
-  `mex.lastCard`, `owner`, `subCategoryLabels`, `budget.period`).
+  `mex.lastCard`, `owner`, `subCategoryLabels`, `parties`, `budget.period`).
 - Données : lecture et écriture par `/api/s3/read` et `/api/s3/write` (`store=data`, `src/services/storage/dataStore.ts`) ;
   jamais d'accès S3 direct. `mobile/mobile.json` et les devises de `settings/exchangeRates.json` : `src/services/mobile/mobileData.ts`
   (partagés par les onglets, rechargés à la connexion, au retour au premier plan et sur « Refresh » ; `mobile.json` seul,
   sans « Loading… », toutes les minutes tant que l'app est à l'écran et après le succès d'une saisie envoyée).
+  Parties de `settings/parties.json` (commerçant, contrat mobile v0.9, environ 440 Ko, lecteur `src/contracts/parties.ts`,
+  copie réduite gardée) : relues seulement à la connexion, sur « Refresh » et après un refus du Mac.
 - Saisies : `src/services/mobile/expenseQueue.ts`. Création, modification et annulation rangées d'abord sur l'iPhone
   (un élément par saisie, action `save` ou `cancel`, `clientUpdatedAt` toujours plus récent), puis envoyées dès que le
   proxy répond : `events/PWA-MEX_<AAAAMMJJHHMMSS>_<id>[_DEL].json` (`MOBILE_EXPENSE_SAVED` ou `MOBILE_EXPENSE_CANCELLED`,
@@ -61,8 +63,8 @@ dans `../hometools-proxy`. Chacun a son propre CLAUDE.md.
   une saisie jamais partie et annulée est seulement retirée. Refus lu dans `events/status/<nom>`, affiché tel quel,
   « Discard » dans History.
 - Formulaire commun `ExpenseForm.vue` (Add et modification ; `scope` : `all`, `classification`, `none`). History ouvre
-  `ExpenseSheet.vue` : saisie ouverte ou refusée, tout modifiable et annulable (deux touchers) ; liée, sous-catégorie et
-  commentaire seulement, annulable (le Mac défait la liaison) ; allouée, annulée, en cours d'envoi ou d'annulation :
+  `ExpenseSheet.vue` : saisie ouverte ou refusée, tout modifiable et annulable (deux touchers) ; liée, sous-catégorie,
+  commerçant et commentaire seulement, annulable (le Mac défait la liaison) ; allouée, annulée, en cours d'envoi ou d'annulation :
   lecture seule. Date du paiement choisie
   dans Add (aujourd'hui par défaut, 60 jours en arrière au plus, heure de l'enregistrement) et modifiable tant que la
   saisie est ouverte ou refusée (même heure) ; l'heure n'est jamais choisie (choix de Michel).
@@ -102,7 +104,29 @@ dans `../hometools-proxy`. Chacun a son propre CLAUDE.md.
    texte, montant payé en positif, jamais comparé à la saisie), rappel de la carte du paiement dans le formulaire
    (fait).
 8. Date du paiement saisissable dans Add (aujourd'hui par défaut) et modifiable sur une saisie pas encore liée (fait).
-9. Annulation d'une saisie liée, pas encore allouée (contrat mobile § 4.2, Backend d'abord).
+9. Annulation d'une saisie liée, pas encore allouée (contrat mobile § 4.2, Backend d'abord) (fait).
+10. Contrat mobile v0.9 : commerçant facultatif (`MerchantField.vue`) : partie cherchée dans `parties.json` (libellé et
+    alias, sans casse ni accents) ou texte libre (`partyId` ou `partyName`, 100 caractères au plus), modifiable sur
+    une saisie liée, affiché dans Expenses (fait).
+
+## Backlog
+
+- **Lecture d'un ticket de caisse** (validé dans le principe par Michel, 2026-11-27, pas commencé) : bouton
+  « Scan receipt » dans Add, photo réduite (~1500 px, JPEG) envoyée au proxy (`POST /api/receipt/read`, capacité à
+  ajouter au contrat multi-environnements, canonique dans `../hometools-proxy`). Le proxy appelle l'API Claude (SDK
+  Python `anthropic`, sortie JSON imposée : `date`, `time`, `amount`, `currency`, `cardDigits`, `merchant`, `null` si
+  illisible) avec une clé API de la Claude Console (facturée à part de l'abonnement claude.ai, limite de dépense
+  basse), rangée sur la machine du proxy seulement. Rien n'est gardé ; le formulaire est seulement prérempli, Michel
+  confirme. Modèle : Opus 5.5 d'abord, Haiku 5.5 si aussi bon sur de vrais tickets.
+  Étape 2, carte : 4 derniers chiffres déclarés par carte dans HomeTools › Master data (avec Apple Pay, ceux du
+  numéro de compte de l'appareil, pas de la carte physique), publiés dans `mobile.json` (contrat mobile à étendre).
+- **TWINT (lot M4)** : une web app ne lit rien de l'app TWINT (pas d'API pour un particulier, pas de partage vers une
+  web app). Pistes : TWINT comme moyen de paiement dans Add, lié au mouvement « TWINT … » de l'import bancaire (règle
+  de liaison à définir avec le Backend) ; capture d'écran de la confirmation lue comme un ticket ; export de
+  l'historique depuis l'app TWINT, s'il existe (à vérifier).
+- **Raccourci iOS « Transaction »** (iOS 17+, paiements Apple Pay par carte du Wallet, pas TWINT) : l'automatisation
+  ouvre l'app avec Add prérempli (`?amount=…&card=…&merchant=…`) ; l'app lit ces paramètres à l'ouverture. À vérifier
+  sur l'iPhone : disponibilité pour les cartes de Michel et données transmises.
 
 ## Règles de travail
 

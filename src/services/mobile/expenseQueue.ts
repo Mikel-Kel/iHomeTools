@@ -5,6 +5,7 @@ import {
 
 import {
   asBoolean,
+  asNullableNumber,
   asNumber,
   asObject,
   asString,
@@ -163,6 +164,8 @@ function readExpense(
     currency: asString(value.currency),
     subCategoryId: asNumber(value.subCategoryId),
     comment: asString(value.comment),
+    partyId: asNullableNumber(value.partyId),
+    partyName: asString(value.partyName) || null,
     clientUpdatedAt: asString(value.clientUpdatedAt),
   };
 }
@@ -368,7 +371,7 @@ async function checkStatus(
       message: asString(status.message, "Rejected"),
     });
 
-    /* Cartes ou sous-catégories peut-être changées entre-temps (contrat § 4.3). */
+    /* Cartes, sous-catégories ou parties peut-être changées entre-temps (contrat § 4.3) : tout est relu. */
     void refreshMobileData();
   } else if (status?.status === "success" && item.action === "cancel") {
     remove(item);
