@@ -6,6 +6,7 @@ import {
 } from "vue";
 
 import BudgetBar from "@/components/BudgetBar.vue";
+import DetailSheet from "@/components/DetailSheet.vue";
 import PeriodHeader from "@/components/PeriodHeader.vue";
 
 import {
@@ -64,6 +65,9 @@ import { formatAmount } from "@/utils/amountFormat";
    puis le total de untrackedTotals (calculé par le Mac). Mois
    montré pour Month, year.actual pour Year to date et Year
    (identiques : aucune saisie dans le futur).
+
+   Toucher une ligne : détail de la période montrée
+   (DetailSheet.vue, mobile/details.json, contrat § 5.1).
 
    Période retenue sur l'iPhone (ht:<envId>:budget.period).
 ========================= */
@@ -337,6 +341,45 @@ const personalTotal =
       : totals.months.find(item => item.month === monthKeys.value[monthIndex.value])?.actual ?? 0;
   });
 
+interface DetailTarget {
+  id: number;
+  label: string;
+  category: string;
+}
+
+/* Sous-catégorie dont le détail est ouvert. */
+const detail =
+  ref<DetailTarget | null>(null);
+
+function openDetail(
+  row: DetailTarget
+) {
+  detail.value = { id: row.id, label: row.label, category: row.category };
+}
+
+/* Mois de la vue : mois montré, ou mois publiés de l'année civile du mois courant. */
+const detailMonths =
+  computed<string[]>(() => {
+    const current =
+      mobileData.value?.today.slice(0, 7) ?? "";
+
+    if (period.value === "month") {
+      return [monthKeys.value[monthIndex.value] ?? current];
+    }
+
+    const year =
+      current.slice(0, 4);
+
+    return monthKeys.value.filter(month => month.startsWith(`${year}-`));
+  });
+
+const detailPeriod =
+  computed(() =>
+    period.value === "month"
+      ? title.value
+      : `${PERIODS.find(item => item.value === period.value)?.label ?? ""} ${title.value}`
+  );
+
 /* Publication du Mac (UTC) → JJ.MM.AAAA HH:MM, heure de l'iPhone. */
 const generatedAt =
   computed(() => {
@@ -416,7 +459,8 @@ const generatedAt =
           <li
             v-for="row in lines"
             :key="row.id"
-            class="row"
+            class="row tappable"
+            @click="openDetail(row)"
           >
             <div class="row-main">
               <span class="row-label">
@@ -465,8 +509,9 @@ const generatedAt =
           <li
             v-for="row in personalRows"
             :key="row.id"
-            class="row"
+            class="row tappable"
             :class="{ empty: row.actual === 0 }"
+            @click="openDetail(row)"
           >
             <div class="row-main">
               <span class="row-label">
@@ -528,8 +573,18 @@ const generatedAt =
         v-if="generatedAt"
         class="generated"
       >
-        Figures of {{ generatedAt }}, in CHF.
+        Figures of {{ generatedAt }}, in CHF. Tap a line for its details.
       </p>
+
+      <DetailSheet
+        v-if="detail"
+        :sub-category-id="detail.id"
+        :label="detail.label"
+        :category="detail.category"
+        :period="detailPeriod"
+        :months="detailMonths"
+        @close="detail = null"
+      />
     </template>
   </div>
 </template>
@@ -611,6 +666,16 @@ const generatedAt =
 
 .row:first-child {
   border-top: none;
+}
+
+.row.tappable {
+  cursor: pointer;
+
+  -webkit-tap-highlight-color: transparent;
+}
+
+.row.tappable:active {
+  opacity: 0.6;
 }
 
 .row-main {

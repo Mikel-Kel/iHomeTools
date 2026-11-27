@@ -47,7 +47,7 @@ dans `../hometools-proxy`. Chacun a son propre CLAUDE.md.
   ne part pas pendant la maintenance, envoi dès sa fin. Contrôle toutes les 5 min, toutes les minutes pendant une
   maintenance.
 - Stockage de l'iPhone : `browserStorage.ts`, localStorage préfixé `ht:<envId>:` (`mobile`, `currencies`, `mex.queue`,
-  `mex.lastCard`, `owner`, `subCategoryLabels`, `parties`, `budget.period`).
+  `mex.lastCard`, `owner`, `subCategoryLabels`, `parties`, `budget.period`, `mobile.details`).
 - Données : lecture et écriture par `/api/s3/read` et `/api/s3/write` (`store=data`, `src/services/storage/dataStore.ts`) ;
   jamais d'accès S3 direct. `mobile/mobile.json` et les devises de `settings/exchangeRates.json` : `src/services/mobile/mobileData.ts`
   (partagés par les onglets, rechargés à la connexion, au retour au premier plan et sur « Refresh » ; `mobile.json` seul,
@@ -116,8 +116,11 @@ dans `../hometools-proxy`. Chacun a son propre CLAUDE.md.
     alias, sans casse ni accents) ou texte libre (`partyId` ou `partyName`, 100 caractères au plus), modifiable sur
     une saisie liée, affiché dans Expenses (fait).
 11. Contrat mobile v0.10 : cartes et catégories hors suivi, état `recorded`, section Personal de Follow-up (fait).
-12. Détail d'une sous-catégorie dans Follow-up (toucher une ligne : montants de la période, du plus récent au plus
-    ancien), lu dans `mobile/details.json` (contrat v0.11, Backend d'abord) (en attente du Backend).
+12. Contrat mobile v0.12 : détail d'une sous-catégorie dans Follow-up (toucher une ligne, `DetailSheet.vue`) :
+    lignes de `mobile/details.json` (`src/contracts/details.ts`, `src/services/mobile/mobileDetails.ts`) de la période
+    montrée, dans l'ordre du Mac, commentaire sinon texte de la banque, « Unconfirmed », aucun total. Lu seulement à
+    l'ouverture d'un détail, relu si son `generatedAt` diffère de celui de `mobile.json` ; copie gardée hors ligne
+    (fait).
 
 ## Backlog
 
