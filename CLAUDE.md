@@ -39,7 +39,8 @@ dans `../hometools-proxy`. Chacun a son propre CLAUDE.md.
   dans `App.vue`.
 - Version (mêmes règles que HomeTools, `src/services/version/versionGuard.ts`) : `__APP_VERSION__` comparée à
   `iHomeToolsVersion` de `settings/AppParameters.json` (écrite par myTooling à chaque Deliver ; avec `followUp.warningPercent`, seules clés lues) ;
-  contrôle à la connexion, au retour au premier plan et toutes les 30 min (au plus toutes les 5 min). App plus ancienne :
+  contrôle à la connexion, au retour au premier plan et toutes les 5 min (au plus une fois par minute ; HomeTools : 30 et
+  5 min, différence voulue par Michel). App plus ancienne :
   bandeau « Reload » (attend la fin d'un envoi, recharge avec `?v=<version>`) / « Later » (30 min). Référence absente
   ou illisible : rien.
 - Maintenance (`settings/appStatus.json`, contrat `../Backend/docs/app-status-contract.md`,

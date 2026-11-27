@@ -297,7 +297,10 @@ watch(
   text-align: center;
 }
 
+/* flex: none : avec overflow hidden (coins arrondis), la liste rétrécirait à la hauteur du panneau au lieu de le faire défiler. */
 .lines {
+  flex: none;
+
   margin: 0;
   padding: 0;
 

@@ -26,15 +26,16 @@ import { log } from "@/utils/logger";
 /* =========================
    Contrôle de version
 
-   Mêmes règles que HomeTools : compare l'app à la version de
-   référence (iHomeToolsVersion de settings/AppParameters.json,
+   Mêmes règles que HomeTools, sauf la fréquence (choix de
+   Michel : 5 minutes au lieu de 30, au plus une par minute
+   au lieu de 5) : compare l'app à la version de référence (iHomeToolsVersion de settings/AppParameters.json,
    écrite au déploiement) :
    - dès que l'environnement est établi ;
    - au retour de l'app au premier plan ;
-   - toutes les 30 minutes tant que la page est visible.
+   - toutes les 5 minutes tant que la page est visible.
    Même lecture : marge d'alerte de Follow-up
    (followUpSettings.ts).
-   Au plus un contrôle abouti toutes les 5 minutes ; une
+   Au plus un contrôle abouti par minute ; une
    référence absente ou illisible, ou un proxy injoignable,
    ne bloque rien et est réessayé au déclencheur suivant.
 
@@ -46,10 +47,10 @@ import { log } from "@/utils/logger";
 ========================= */
 
 const CHECK_INTERVAL_MS =
-  5 * 60 * 1000;
+  60 * 1000;
 
 const PERIODIC_CHECK_MS =
-  30 * 60 * 1000;
+  5 * 60 * 1000;
 
 const PROMPT_AGAIN_AFTER_MS =
   30 * 60 * 1000;
