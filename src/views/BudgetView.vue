@@ -6,6 +6,7 @@ import {
 } from "vue";
 
 import BudgetBar from "@/components/BudgetBar.vue";
+import PeriodHeader from "@/components/PeriodHeader.vue";
 
 import {
   readStored,
@@ -15,6 +16,9 @@ import {
 import {
   mobileData,
   ownSubCategories,
+  ownTrackedSubCategories,
+  ownUntrackedSubCategories,
+  ownUntrackedTotals,
 } from "@/services/mobile/mobileData";
 
 import { deviceOwner } from "@/services/environment/environmentState";
@@ -53,6 +57,12 @@ import { formatAmount } from "@/utils/amountFormat";
    du budget, orange de (100 − p) % à 100 %, rouge au-delà ;
    p = followUp.warningPercent d'AppParameters.json (10 par
    défaut). Sans budget : rien.
+
+   Personal (contrat v0.10) : sous-catégories hors suivi,
+   dans une section à part, sans budget ni barre : montant par
+   sous-catégorie et total de untrackedTotals (calculé par le
+   Mac), vues Month (même mois montré) et Year to date ; vue
+   Year : section masquée, renvoi aux deux autres vues.
 
    Période retenue sur l'iPhone (ht:<envId>:budget.period).
 ========================= */
@@ -249,7 +259,7 @@ function monthFigures(
 
 const rows =
   computed<BudgetRow[]>(() =>
-    ownSubCategories.value.map(sub =>
+    ownTrackedSubCategories.value.map(sub =>
       period.value === "month"
         ? {
             id: sub.subCategoryId,
@@ -285,6 +295,50 @@ const rows =
 /* Lignes affichées, avec leur écart au budget. */
 const lines =
   computed(() => rows.value.map(row => ({ ...row, delta: delta(row) })));
+
+interface PersonalRow {
+  id: number;
+  label: string;
+  category: string;
+  actual: number;
+}
+
+/* Réel hors suivi de la vue : mois montré ou année à date ; vue Year : rien. */
+const personalRows =
+  computed<PersonalRow[]>(() => {
+    if (period.value === "year") {
+      return [];
+    }
+
+    return ownUntrackedSubCategories.value.map(sub => ({
+      id: sub.subCategoryId,
+      label: sub.label,
+      category: sub.categoryLabel,
+      actual:
+        period.value === "ytd"
+          ? sub.year.actual
+          : monthFigures(sub).actual,
+    }));
+  });
+
+/* Total publié par le Mac pour la vue ; null sans total. */
+const personalTotal =
+  computed<number | null>(() => {
+    const totals =
+      ownUntrackedTotals.value;
+
+    if (!totals || period.value === "year") {
+      return null;
+    }
+
+    if (period.value === "ytd") {
+      return totals.year;
+    }
+
+    return currentMonthShown.value
+      ? totals.month
+      : totals.months.find(item => item.month === monthKeys.value[monthIndex.value])?.actual ?? 0;
+  });
 
 /* Publication du Mac (UTC) → JJ.MM.AAAA HH:MM, heure de l'iPhone. */
 const generatedAt =
@@ -351,43 +405,18 @@ const generatedAt =
         </button>
       </div>
 
-      <section class="card">
-        <header class="card-header">
-          <div class="title-row">
-            <button
-              v-if="period === 'month'"
-              type="button"
-              class="month-nav"
-              aria-label="Previous month"
-              :disabled="monthIndex <= 0"
-              @click="moveMonth(-1)"
-            >
-              ‹
-            </button>
-
-            <h2 :class="{ centered: period === 'month' }">
-              {{ title }}
-            </h2>
-
-            <button
-              v-if="period === 'month'"
-              type="button"
-              class="month-nav"
-              aria-label="Next month"
-              :disabled="currentMonthShown"
-              @click="moveMonth(1)"
-            >
-              ›
-            </button>
-          </div>
-
-          <p
-            v-if="subtitle"
-            class="subtitle"
-          >
-            {{ subtitle }}
-          </p>
-        </header>
+      <section
+        v-if="ownTrackedSubCategories.length"
+        class="card"
+      >
+        <PeriodHeader
+          :title="title"
+          :subtitle="subtitle"
+          :navigable="period === 'month'"
+          :can-previous="monthIndex > 0"
+          :can-next="!currentMonthShown"
+          @move="moveMonth"
+        />
 
         <ul class="rows">
           <li
@@ -432,7 +461,71 @@ const generatedAt =
         </ul>
       </section>
 
+      <!-- Personal : hors suivi, sans budget -->
+
+      <template v-if="ownUntrackedSubCategories.length">
+        <h2 class="section-title">
+          Personal
+        </h2>
+
+        <p
+          v-if="period === 'year'"
+          class="section-note"
+        >
+          Personal: see Month or Year to date.
+        </p>
+
+        <section
+          v-else
+          class="card"
+        >
+          <PeriodHeader
+            v-if="!ownTrackedSubCategories.length"
+            :title="title"
+            :subtitle="subtitle"
+            :navigable="period === 'month'"
+            :can-previous="monthIndex > 0"
+            :can-next="!currentMonthShown"
+            @move="moveMonth"
+          />
+
+          <ul class="rows">
+            <li
+              v-for="row in personalRows"
+              :key="row.id"
+              class="row personal"
+              :class="{ empty: row.actual === 0 }"
+            >
+              <div class="row-main">
+                <span class="row-label">
+                  {{ row.label }}
+                  <span class="row-meta">{{ row.category }}</span>
+                </span>
+
+                <span class="row-amounts">
+                  {{ formatAmount(row.actual, 0) }}
+                </span>
+              </div>
+            </li>
+
+            <li
+              v-if="personalTotal !== null"
+              class="row personal total"
+            >
+              <div class="row-main">
+                <span class="row-label">Total</span>
+
+                <span class="row-amounts">
+                  {{ formatAmount(personalTotal, 0) }}
+                </span>
+              </div>
+            </li>
+          </ul>
+        </section>
+      </template>
+
       <ul
+        v-if="ownTrackedSubCategories.length"
         class="legend"
         aria-label="Legend"
       >
@@ -525,58 +618,6 @@ const generatedAt =
   background: var(--surface);
 }
 
-.card-header {
-  margin: 0 0 4px;
-}
-
-.title-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.card-header h2 {
-  flex: 1;
-  margin: 0;
-
-  font-size: var(--font-size-lg);
-}
-
-.card-header h2.centered {
-  text-align: center;
-}
-
-.month-nav {
-  flex: none;
-
-  width: 40px;
-  height: 40px;
-
-  border: none;
-  border-radius: 10px;
-
-  background: var(--btn-secondary-bg);
-  color: var(--text);
-
-  font-size: 1.5rem;
-  line-height: 1;
-
-  cursor: pointer;
-}
-
-.month-nav:disabled {
-  opacity: 0.35;
-
-  cursor: default;
-}
-
-.subtitle {
-  margin: 2px 0 0;
-
-  color: var(--text-soft);
-  font-size: var(--font-size-sm);
-}
-
 .rows {
   margin: 0;
   padding: 0;
@@ -645,6 +686,34 @@ const generatedAt =
 
 .row-delta.negative {
   color: var(--negative);
+}
+
+.section-title {
+  margin: 0.4rem 2px -0.4rem;
+
+  color: var(--text-soft);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.section-note {
+  margin: 0;
+  padding: 0 2px;
+
+  color: var(--text-soft);
+  font-size: var(--font-size-sm);
+}
+
+.row.personal.empty {
+  color: var(--text-soft);
+}
+
+.row.personal.total {
+  border-top-width: 2px;
+
+  font-weight: 700;
 }
 
 .row-pending {

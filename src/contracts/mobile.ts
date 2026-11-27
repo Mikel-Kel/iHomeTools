@@ -39,6 +39,15 @@ import {
    ou partyName (texte libre), au plus l'un des deux ;
    partyLabel : libellé actuel de partyId, null si la partie
    n'existe plus. Fichier plus ancien : pas de commerçant.
+
+   Cartes et catégories hors suivi (v0.10, tracked: false ;
+   absent = true) : dépenses personnelles sans budget ni
+   liaison. Une carte hors suivi n'accepte que des
+   sous-catégories hors suivi, et inversement. Saisie d'une
+   carte hors suivi : état recorded, montant en CHF figé à la
+   réception. untrackedTotals : totaux par propriétaire
+   calculés par le Mac (year.actual = année à date) ; l'app
+   n'additionne rien. kind null : carte sans compte.
 ========================= */
 
 export const MOBILE_FOLDER = "mobile";
@@ -47,7 +56,7 @@ export const MOBILE_FILE = "mobile.json";
 
 export type CardKind = "credit" | "debit";
 
-export type EntryState = "open" | "linked" | "cancelled";
+export type EntryState = "open" | "linked" | "recorded" | "cancelled";
 
 export interface PaymentMean {
   cardId: number;
@@ -58,7 +67,11 @@ export interface PaymentMean {
   /* Couleur de la carte (#RRGGBB), null si aucune. */
   color: string | null;
 
-  kind: CardKind;
+  /* null : carte hors suivi sans compte. */
+  kind: CardKind | null;
+
+  /* false : carte d'un compte hors suivi. */
+  tracked: boolean;
 
   /* Devise proposée par défaut (carte, sinon compte). */
   currency: string;
@@ -93,6 +106,9 @@ export interface MobileSubCategory {
   /* Propriétaires à qui elle est attribuée (§ 3.3). */
   owners: string[];
 
+  /* false : catégorie hors suivi (sans budget). */
+  tracked: boolean;
+
   month: MonthFigures;
   year: YearFigures;
   months: MonthHistoryFigures[];
@@ -124,6 +140,16 @@ export interface MobileEntry {
   partyLabel: string | null;
 }
 
+export interface UntrackedTotals {
+  owner: string;
+  month: number;
+
+  /* Année à date. */
+  year: number;
+
+  months: { month: string; actual: number }[];
+}
+
 export interface MobileWarning {
   code: string;
   id: string;
@@ -139,6 +165,7 @@ export interface MobileData {
   subCategories: MobileSubCategory[];
   entries: MobileEntry[];
   warnings: MobileWarning[];
+  untrackedTotals: UntrackedTotals[];
 }
 
 function objects(
@@ -155,9 +182,17 @@ function objects(
 function readState(
   value: unknown
 ): EntryState {
-  return value === "linked" || value === "cancelled"
+  return value === "linked" || value === "recorded" || value === "cancelled"
     ? value
     : "open";
+}
+
+function readKind(
+  value: unknown
+): CardKind | null {
+  return value === "credit" || value === "debit"
+    ? value
+    : null;
 }
 
 function readOwner(
@@ -251,8 +286,9 @@ export function readMobileData(
         holder: asString(mean.holder),
         owner: readOwner(mean.owner),
         color: readColor(mean.color),
-        kind: (mean.kind === "credit" ? "credit" : "debit") as CardKind,
+        kind: readKind(mean.kind),
         currency: asString(mean.currency, "CHF"),
+        tracked: mean.tracked !== false,
       })),
 
     subCategories: objects(file.subCategories)
@@ -271,6 +307,7 @@ export function readMobileData(
           nature: asString(sub.nature),
           order: asNumber(sub.order),
           owners: readOwners(sub.owners),
+          tracked: sub.tracked !== false,
 
           month: {
             budget: asNumber(month?.budget),
@@ -316,6 +353,20 @@ export function readMobileData(
         code: asString(warning.code),
         id: asString(warning.id),
       })),
+
+    untrackedTotals: objects(file.untrackedTotals)
+      .map(total => ({
+        owner: asString(total.owner),
+        month: asNumber(asObject(total.month)?.actual),
+        year: asNumber(asObject(total.year)?.actual),
+        months: objects(total.months)
+          .map(item => ({
+            month: asString(item.month),
+            actual: asNumber(item.actual),
+          }))
+          .filter(item => /^\d{4}-\d{2}$/.test(item.month)),
+      }))
+      .filter(total => total.owner),
   };
 }
 

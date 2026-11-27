@@ -17,6 +17,7 @@ import {
   type MobileEntry,
   type MobileSubCategory,
   type PaymentMean,
+  type UntrackedTotals,
 } from "@/contracts/mobile";
 
 import {
@@ -105,6 +106,20 @@ export const ownSubCategories =
   computed<MobileSubCategory[]>(() =>
     (mobileData.value?.subCategories ?? [])
       .filter(sub => deviceOwner.value !== null && sub.owners.includes(deviceOwner.value))
+  );
+
+/* Sous-catégories suivies (Follow-up, budget) et hors suivi (Personal), contrat v0.10. */
+export const ownTrackedSubCategories =
+  computed(() => ownSubCategories.value.filter(sub => sub.tracked));
+
+export const ownUntrackedSubCategories =
+  computed(() => ownSubCategories.value.filter(sub => !sub.tracked));
+
+/* Totaux hors suivi du propriétaire de l'iPhone, calculés par le Mac ; null sans total. */
+export const ownUntrackedTotals =
+  computed<UntrackedTotals | null>(() =>
+    (mobileData.value?.untrackedTotals ?? [])
+      .find(total => deviceOwner.value !== null && total.owner === deviceOwner.value) ?? null
   );
 
 export const ownEntries =

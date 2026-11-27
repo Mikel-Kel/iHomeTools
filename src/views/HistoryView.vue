@@ -42,7 +42,8 @@ import { formatAmount } from "@/utils/amountFormat";
    sa dernière version voulue.
 
    États : On iPhone, Sending, Sent, Cancelling (file) ;
-   Received, Linked, Allocated, Cancelled (Mac) ; Rejected
+   Received, Linked, Allocated, Recorded (carte hors suivi,
+   tout modifiable et annulable), Cancelled (Mac) ; Rejected
    avec le message du Mac et « Discard ».
 
    Toucher une saisie ouvre ExpenseSheet.vue. Règles (§ 4.1,
@@ -94,6 +95,10 @@ function entryState(
 
   if (entry.allocated) {
     return { label: "Allocated", tone: "positive" };
+  }
+
+  if (entry.state === "recorded") {
+    return { label: "Recorded", tone: "positive" };
   }
 
   return entry.state === "linked"

@@ -34,7 +34,9 @@ import {
    Formulaire d'une dépense
 
    Montant, devise, carte, sous-catégorie, commerçant et
-   commentaire facultatifs ; utilisé par Add (nouvelle saisie) et par
+   commentaire facultatifs ; sous-catégories proposées
+   suivies comme la carte (carte hors suivi : catégories hors
+   suivi, contrat v0.10) ; utilisé par Add (nouvelle saisie) et par
    History (modification).
 
    Nouvelle saisie (initial absent) : dernière carte utilisée
@@ -119,6 +121,7 @@ interface CardOption {
   label: string;
   color: string | null;
   currency: string;
+  tracked: boolean;
 }
 
 interface SubCategoryOption {
@@ -272,23 +275,44 @@ const cards =
         label: known?.label ?? `Card ${initialId}`,
         color: known?.color ?? null,
         currency: known?.currency ?? props.initial!.currency,
+        tracked: known?.tracked ?? true,
       },
     ];
   });
 
-/* Sous-catégories du propriétaire, plus celle de la saisie modifiée si elle n'en fait plus partie. */
+/* Carte choisie suivie, ou hors suivi (contrat v0.10). */
+const cardTracked =
+  computed(() => cards.value.find(card => card.cardId === cardId.value)?.tracked ?? true);
+
+/*
+  Sous-catégories du propriétaire suivies comme la carte
+  choisie ; carte de la saisie modifiée inchangée : sa
+  sous-catégorie reste proposée même si elle n'en fait plus
+  partie (valeur inchangée acceptée).
+*/
 const subCategories =
   computed<SubCategoryOption[]>(() => {
     const offered: SubCategoryOption[] =
-      ownSubCategories.value;
+      ownSubCategories.value.filter(sub => sub.tracked === cardTracked.value);
 
     const initialId =
       props.initial?.subCategoryId;
 
-    return initialId === undefined || offered.some(sub => sub.subCategoryId === initialId)
+    return (
+      initialId === undefined ||
+      cardId.value !== props.initial?.cardId ||
+      offered.some(sub => sub.subCategoryId === initialId)
+    )
       ? offered
       : [...offered, { subCategoryId: initialId, label: subCategoryLabel(initialId) }];
   });
+
+/* Autre carte : une sous-catégorie qui ne correspond plus est effacée. */
+watch(subCategories, list => {
+  if (subCategoryId.value !== null && !list.some(sub => sub.subCategoryId === subCategoryId.value)) {
+    subCategoryId.value = null;
+  }
+});
 
 /* Texte noir ou blanc, le plus lisible sur le fond (luminance relative, WCAG). */
 function readableText(
@@ -546,7 +570,7 @@ watch(
       <h2>Card</h2>
 
       <p
-        v-if="amountEditable"
+        v-if="amountEditable && cardTracked"
         class="field-hint"
       >
         The card you paid with: the Mac links the expense to its bank movement.
