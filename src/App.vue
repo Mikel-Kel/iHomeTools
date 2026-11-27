@@ -170,7 +170,10 @@ const version =
 </script>
 
 <template>
-  <template v-if="appUsable()">
+  <div
+    v-if="appUsable()"
+    class="shell"
+  >
     <header class="app-header">
       <img
         class="app-icon"
@@ -265,7 +268,7 @@ const version =
         {{ item.label }}
       </button>
     </nav>
-  </template>
+  </div>
 
   <p
     v-else-if="!environmentBlock"
@@ -278,10 +281,21 @@ const version =
 </template>
 
 <style scoped>
+/*
+  Écran fixe : en-tête, bandeaux et barre d'onglets restent en
+  place, seul le contenu défile (aussi pendant le rebond
+  d'iOS en haut et en bas de la liste).
+*/
+.shell {
+  position: fixed;
+  inset: 0;
+
+  display: flex;
+  flex-direction: column;
+}
+
 .app-header {
-  position: sticky;
-  top: 0;
-  z-index: 10;
+  flex: none;
 
   display: flex;
   align-items: center;
@@ -319,6 +333,8 @@ const version =
 }
 
 .banner {
+  flex: none;
+
   margin: 0;
   padding: 8px var(--gutter);
 
@@ -360,9 +376,12 @@ const version =
   min-height: 36px;
 }
 
-/* Place de la barre d'onglets. */
 .content {
-  padding-bottom: calc(var(--safe-bottom) + 72px);
+  flex: 1;
+  min-height: 0;
+
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .state,
@@ -379,11 +398,7 @@ const version =
 }
 
 .tab-bar {
-  position: fixed;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  z-index: 10;
+  flex: none;
 
   display: grid;
   grid-template-columns: repeat(3, 1fr);
