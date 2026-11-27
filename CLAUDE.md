@@ -62,8 +62,8 @@ dans `../hometools-proxy`. Chacun a son propre CLAUDE.md.
 - Formulaire commun `ExpenseForm.vue` (Add et modification ; `scope` : `all`, `classification`, `none`). History ouvre
   `ExpenseSheet.vue` : saisie ouverte ou refusée, tout modifiable et annulable (deux touchers) ; liée, sous-catégorie et
   commentaire seulement ; allouée, annulée, en cours d'envoi ou d'annulation : lecture seule. Date du paiement choisie
-  dans Add (aujourd'hui par défaut, 60 jours en arrière au plus, heure de l'enregistrement) ; heure du paiement
-  jamais modifiable ensuite (choix de Michel).
+  dans Add (aujourd'hui par défaut, 60 jours en arrière au plus, heure de l'enregistrement) et modifiable tant que la
+  saisie est ouverte ou refusée (même heure) ; l'heure n'est jamais choisie (choix de Michel).
 - Écrans : barre d'onglets en bas (`App.vue`, sans routeur) : Add (`AddView.vue`), Follow-up
   (`BudgetView.vue`), Expenses (`HistoryView.vue`) ; noms internes Budget et History dans le code.
 - Le Mac calcule tout (réel, budget, non confirmé) : l'app ne fait aucun total ni agrégat. Seule exception (choix de
@@ -99,7 +99,7 @@ dans `../hometools-proxy`. Chacun a son propre CLAUDE.md.
 7. Lot M3 (contrat v0.6, liaison au mouvement) : aucun nouveau champ ; mouvement lié affiché dans Expenses (date,
    texte, montant payé en positif, jamais comparé à la saisie), rappel de la carte du paiement dans le formulaire
    (fait).
-8. Date du paiement saisissable dans Add, aujourd'hui par défaut (fait).
+8. Date du paiement saisissable dans Add (aujourd'hui par défaut) et modifiable sur une saisie pas encore liée (fait).
 
 ## Règles de travail
 

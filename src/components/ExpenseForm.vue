@@ -36,12 +36,13 @@ import {
    même si le Mac ne les propose plus (valeur inchangée
    acceptée, contrat § 4.1).
 
-   Date du paiement (withDate, Add seulement) : jour de
-   l'iPhone proposé, choisie entre 60 jours en arrière et
-   aujourd'hui (le Mac refuse un paiement dans le futur) ;
-   suit le changement de jour tant qu'elle n'a pas été
-   changée. En modification, l'heure du paiement n'est jamais
-   modifiable (choix de Michel).
+   Date du paiement (withDate) : Add, jour de l'iPhone
+   proposé, qui suit le changement de jour tant qu'elle n'a
+   pas été changée ; modification d'une saisie pas encore
+   liée (scope all), jour de la saisie (initialDate). Choisie
+   entre 60 jours en arrière (ou le jour de la saisie, s'il
+   est plus ancien) et aujourd'hui : le Mac refuse un
+   paiement dans le futur. L'heure n'est jamais choisie.
 
    Champs modifiables (scope) : all ; classification
    (saisie liée : sous-catégorie et commentaire, § 4.1) ;
@@ -71,11 +72,14 @@ const props =
       scope?: FormScope;
       submitLabel: string;
       withDate?: boolean;
+      /* Modification : jour de la saisie, AAAA-MM-JJ. */
+      initialDate?: string | null;
     }>(),
     {
       initial: null,
       scope: "all",
       withDate: false,
+      initialDate: null,
     }
   );
 
@@ -143,15 +147,20 @@ const earliestDay =
 
     date.setDate(date.getDate() - DATE_DAYS_BACK);
 
-    return dayText(date);
+    const limit =
+      dayText(date);
+
+    return props.initialDate && props.initialDate < limit
+      ? props.initialDate
+      : limit;
   });
 
 const paidDate =
-  ref(today.value);
+  ref(props.initialDate ?? today.value);
 
 /* Changement de jour : la date proposée suit, sauf si elle a été choisie. */
 watch(today, (current, previous) => {
-  if (paidDate.value === previous) {
+  if (!props.initialDate && paidDate.value === previous) {
     paidDate.value = current;
   }
 });
@@ -350,7 +359,8 @@ const changed =
       cardId.value !== initial.cardId ||
       currency.value !== initial.currency ||
       subCategoryId.value !== initial.subCategoryId ||
-      trimmedComment.value !== initial.comment
+      trimmedComment.value !== initial.comment ||
+      (props.withDate && paidDate.value !== props.initialDate)
     );
   });
 
@@ -468,6 +478,7 @@ watch(
         type="date"
         aria-label="Date of the payment"
         :min="earliestDay"
+        :disabled="!amountEditable"
         :max="today"
       >
 

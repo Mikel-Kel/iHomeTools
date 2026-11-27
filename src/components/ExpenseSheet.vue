@@ -18,8 +18,10 @@ import {
 /* =========================
    Modification d'une saisie (History)
 
-   Panneau du bas de l'écran : heure du paiement (non
-   modifiable), formulaire commun pré-rempli et annulation.
+   Panneau du bas de l'écran : heure du paiement,
+   formulaire commun pré-rempli et annulation. Saisie pas
+   encore liée : le jour du paiement peut changer, l'heure
+   reste la même.
    Champs modifiables et annulation selon l'état, décidés par
    History (contrat § 4.1 et § 4.2) ; note expliquant une
    limite. Annulation en deux touchers (« Tap again to
@@ -82,10 +84,17 @@ function done(
   emit("close");
 }
 
+/* Jour changé (saisie pas encore liée) : même heure, autre jour. */
 function save(
-  values: ExpenseValues
+  values: ExpenseValues,
+  paidDate: string | null
 ) {
-  done(updateExpense({ ...props.expense, ...values }));
+  const paidAt =
+    paidDate
+      ? `${paidDate}${props.expense.paidAt.slice(10)}`
+      : props.expense.paidAt;
+
+  done(updateExpense({ ...props.expense, ...values, paidAt }));
 }
 
 function cancel() {
@@ -149,6 +158,8 @@ onBeforeUnmount(() => {
           :key="expense.id"
           :initial="expense"
           :scope="scope"
+          :with-date="scope === 'all'"
+          :initial-date="expense.paidAt.slice(0, 10)"
           submit-label="Save changes"
           @submit="save"
         />
