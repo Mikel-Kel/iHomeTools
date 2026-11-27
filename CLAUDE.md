@@ -61,8 +61,9 @@ dans `../hometools-proxy`. Chacun a son propre CLAUDE.md.
   « Discard » dans History.
 - Formulaire commun `ExpenseForm.vue` (Add et modification ; `scope` : `all`, `classification`, `none`). History ouvre
   `ExpenseSheet.vue` : saisie ouverte ou refusée, tout modifiable et annulable (deux touchers) ; liée, sous-catégorie et
-  commentaire seulement ; allouée, annulée, en cours d'envoi ou d'annulation : lecture seule. Heure du paiement jamais
-  modifiable (choix de Michel).
+  commentaire seulement ; allouée, annulée, en cours d'envoi ou d'annulation : lecture seule. Date du paiement choisie
+  dans Add (aujourd'hui par défaut, 60 jours en arrière au plus, heure de l'enregistrement) ; heure du paiement
+  jamais modifiable ensuite (choix de Michel).
 - Écrans : barre d'onglets en bas (`App.vue`, sans routeur) : Add (`AddView.vue`), Follow-up
   (`BudgetView.vue`), Expenses (`HistoryView.vue`) ; noms internes Budget et History dans le code.
 - Le Mac calcule tout (réel, budget, non confirmé) : l'app ne fait aucun total ni agrégat. Seule exception (choix de
@@ -95,6 +96,10 @@ dans `../hometools-proxy`. Chacun a son propre CLAUDE.md.
 4. Réel face au budget : barres par sous-catégorie, part « non confirmé » hachurée, vue mois et vue année (fait).
 5. Contrat mobile v0.4 : couleur des cartes, sous-catégories par propriétaire (fait).
 6. Contrat mobile v0.5 : navigation sur les 12 derniers mois ; saisies annulées purgées chaque nuit par le Mac (fait).
+7. Lot M3 (contrat v0.6, liaison au mouvement) : aucun nouveau champ ; mouvement lié affiché dans Expenses (date,
+   texte, montant payé en positif, jamais comparé à la saisie), rappel de la carte du paiement dans le formulaire
+   (fait).
+8. Date du paiement saisissable dans Add, aujourd'hui par défaut (fait).
 
 ## Règles de travail
 

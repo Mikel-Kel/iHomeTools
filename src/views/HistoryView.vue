@@ -147,6 +147,34 @@ function entryExpense(
   };
 }
 
+/*
+  Mouvement bancaire lié : date, texte de la banque et montant
+  payé en CHF (amountChf est négatif pour une dépense ; affiché
+  en positif comme les saisies). Jamais comparé au montant saisi.
+*/
+function movementText(
+  entry: MobileEntry
+): string {
+  const movement =
+    entry.movement;
+
+  if (!movement) {
+    return "";
+  }
+
+  const date =
+    /^\d{4}-(\d{2})-(\d{2})/.exec(movement.date);
+
+  return [
+    "Bank",
+    date ? `${date[2]}.${date[1]}` : movement.date,
+    movement.text,
+    `${formatAmount(-movement.amountChf)} CHF`,
+  ]
+    .filter(part => part !== "")
+    .join(" · ");
+}
+
 /* Cartes publiées (toutes, propriétaire compris) : libellé et couleur. */
 const cards =
   computed(() =>
@@ -218,7 +246,7 @@ const rows =
             expense: entryExpense(entry),
             state: state.label,
             tone: state.tone,
-            message: entry.movement?.text ?? "",
+            message: movementText(entry),
             rejected: false,
             openTooLong: tooLong.has(entry.id),
           };

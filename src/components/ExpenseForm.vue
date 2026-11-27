@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import {
   computed,
+  onBeforeUnmount,
+  onMounted,
   ref,
   watch,
 } from "vue";
@@ -34,6 +36,13 @@ import {
    même si le Mac ne les propose plus (valeur inchangée
    acceptée, contrat § 4.1).
 
+   Date du paiement (withDate, Add seulement) : jour de
+   l'iPhone proposé, choisie entre 60 jours en arrière et
+   aujourd'hui (le Mac refuse un paiement dans le futur) ;
+   suit le changement de jour tant qu'elle n'a pas été
+   changée. En modification, l'heure du paiement n'est jamais
+   modifiable (choix de Michel).
+
    Champs modifiables (scope) : all ; classification
    (saisie liée : sous-catégorie et commentaire, § 4.1) ;
    none (lecture seule). Seules les cartes et les
@@ -61,16 +70,19 @@ const props =
       initial?: ExpenseValues | null;
       scope?: FormScope;
       submitLabel: string;
+      withDate?: boolean;
     }>(),
     {
       initial: null,
       scope: "all",
+      withDate: false,
     }
   );
 
 const emit =
   defineEmits<{
-    submit: [values: ExpenseValues];
+    /* paidDate : AAAA-MM-JJ choisi (withDate), sinon null. */
+    submit: [values: ExpenseValues, paidDate: string | null];
 
     /* Le montant change : Add efface sa confirmation. */
     amountInput: [];
@@ -81,6 +93,8 @@ const COMMENT_MAX = 50;
 const AMOUNT_MAX = 9_999_999;
 
 const LAST_CARD = "mex.lastCard";
+
+const DATE_DAYS_BACK = 60;
 
 interface CardOption {
   cardId: number;
@@ -108,6 +122,72 @@ const subCategoryId =
 
 const comment =
   ref(props.initial?.comment ?? "");
+
+/* Jour local, AAAA-MM-JJ. */
+function dayText(
+  date: Date
+): string {
+  const pad =
+    (part: number) => String(part).padStart(2, "0");
+
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+const today =
+  ref(dayText(new Date()));
+
+const earliestDay =
+  computed(() => {
+    const date =
+      new Date(`${today.value}T12:00:00`);
+
+    date.setDate(date.getDate() - DATE_DAYS_BACK);
+
+    return dayText(date);
+  });
+
+const paidDate =
+  ref(today.value);
+
+/* Changement de jour : la date proposée suit, sauf si elle a été choisie. */
+watch(today, (current, previous) => {
+  if (paidDate.value === previous) {
+    paidDate.value = current;
+  }
+});
+
+function refreshToday() {
+  today.value = dayText(new Date());
+}
+
+function onVisible() {
+  if (document.visibilityState === "visible") {
+    refreshToday();
+  }
+}
+
+onMounted(() => {
+  document.addEventListener("visibilitychange", onVisible);
+});
+
+onBeforeUnmount(() => {
+  document.removeEventListener("visibilitychange", onVisible);
+});
+
+const dateValid =
+  computed(() =>
+    !props.withDate ||
+    (/^\d{4}-\d{2}-\d{2}$/.test(paidDate.value) &&
+      paidDate.value >= earliestDay.value &&
+      paidDate.value <= today.value)
+  );
+
+const dateError =
+  computed(() =>
+    props.withDate && !dateValid.value
+      ? `A date between ${DATE_DAYS_BACK} days ago and today.`
+      : ""
+  );
 
 const amountEditable =
   computed(() => props.scope === "all");
@@ -282,10 +362,13 @@ const canSave =
     cardId.value !== null &&
     !!currency.value &&
     subCategoryId.value !== null &&
-    trimmedComment.value.length <= COMMENT_MAX
+    trimmedComment.value.length <= COMMENT_MAX &&
+    dateValid.value
   );
 
 function save() {
+  refreshToday();
+
   if (!canSave.value) {
     return;
   }
@@ -300,11 +383,13 @@ function save() {
     currency: currency.value,
     subCategoryId: subCategoryId.value!,
     comment: trimmedComment.value,
-  });
+  }, props.withDate ? paidDate.value : null);
 }
 
-/* Après un enregistrement dans Add : carte gardée, le reste vidé. */
+/* Après un enregistrement dans Add : carte gardée, date du jour, le reste vidé. */
 function reset() {
+  refreshToday();
+  paidDate.value = today.value;
   amountText.value = "";
   subCategoryId.value = null;
   comment.value = "";
@@ -369,10 +454,42 @@ watch(
       {{ amountError }}
     </p>
 
+    <!-- Date -->
+
+    <section
+      v-if="withDate"
+      class="field"
+    >
+      <h2>Date</h2>
+
+      <input
+        v-model="paidDate"
+        class="date-input"
+        type="date"
+        aria-label="Date of the payment"
+        :min="earliestDay"
+        :max="today"
+      >
+
+      <p
+        v-if="dateError"
+        class="field-error"
+      >
+        {{ dateError }}
+      </p>
+    </section>
+
     <!-- Card -->
 
     <section class="field">
       <h2>Card</h2>
+
+      <p
+        v-if="amountEditable"
+        class="field-hint"
+      >
+        The card you paid with: the Mac links the expense to its bank movement.
+      </p>
 
       <div class="choices cards">
         <button
@@ -460,6 +577,11 @@ watch(
   text-align: right;
 }
 
+.date-input {
+  width: 100%;
+  min-height: 44px;
+}
+
 .currency-select {
   flex: none;
   width: 92px;
@@ -484,6 +606,13 @@ watch(
   color: var(--text-soft);
   font-size: var(--font-size-sm);
   font-weight: 700;
+}
+
+.field-hint {
+  margin: -0.25rem 0 0;
+
+  color: var(--text-soft);
+  font-size: var(--font-size-xs);
 }
 
 .choices {

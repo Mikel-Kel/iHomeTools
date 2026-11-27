@@ -29,7 +29,8 @@ import { formatAmount } from "@/utils/amountFormat";
    Formulaire commun (ExpenseForm.vue) ; seules les cartes et
    les sous-catégories du propriétaire de l'iPhone sont
    proposées (contrat mobile, § 5) ; sans l'une ou l'autre,
-   pas de saisie. L'heure du paiement est celle de l'enregistrement.
+   pas de saisie. Date du paiement choisie dans le formulaire
+   (aujourd'hui par défaut), heure celle de l'enregistrement.
    La saisie part dans la file d'attente (expenseQueue.ts),
    envoyée dès que le proxy répond.
 ========================= */
@@ -42,17 +43,30 @@ const confirmation =
   ref("");
 
 function save(
-  values: ExpenseValues
+  values: ExpenseValues,
+  paidDate: string | null
 ) {
+  const now =
+    localDateTime(new Date());
+
+  const day =
+    paidDate ?? now.slice(0, 10);
+
   const saved =
     addExpense({
       ...values,
-      paidAt: localDateTime(new Date()),
+      paidAt: `${day}${now.slice(10)}`,
     });
+
+  /* Autre jour qu'aujourd'hui : rappelé dans la confirmation (JJ.MM). */
+  const dayNote =
+    day === now.slice(0, 10)
+      ? ""
+      : ` (${day.slice(8, 10)}.${day.slice(5, 7)})`;
 
   confirmation.value =
     saved
-      ? `${formatAmount(values.amount)} ${values.currency} · ${subCategoryLabel(values.subCategoryId)} saved.`
+      ? `${formatAmount(values.amount)} ${values.currency} · ${subCategoryLabel(values.subCategoryId)} saved${dayNote}.`
       : "Saved, but not kept on this iPhone: keep the app open until it is sent.";
 
   form.value?.reset();
@@ -93,6 +107,7 @@ function save(
       <ExpenseForm
         ref="form"
         submit-label="Save"
+        with-date
         @submit="save"
         @amount-input="confirmation = ''"
       />
