@@ -46,8 +46,8 @@ import { formatAmount } from "@/utils/amountFormat";
 
    « Scan receipt » (capacité receiptRead, proxy joignable) :
    photo prise ou choisie, lue par le proxy
-   (receiptReader.ts), qui préremplit montant, devise, date et
-   commerçant ; note « check before saving », avec ce qui n'a
+   (receiptReader.ts), qui préremplit carte (4 derniers
+   chiffres), montant, devise, date et commerçant ; note « check before saving », avec ce qui n'a
    pas été repris et le moyen de paiement s'il n'est pas une
    carte. Michel confirme toujours en enregistrant.
 ========================= */
@@ -109,6 +109,7 @@ async function onReceiptChosen() {
 
     const notes =
       form.value?.prefill({
+        cardDigits: reading.paymentMethod === "cash" ? null : reading.cardDigits,
         amount: reading.amount,
         currency: reading.currency,
         paidDate: reading.date,

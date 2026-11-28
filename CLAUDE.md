@@ -73,9 +73,10 @@ dans `../hometools-proxy`. Chacun a son propre CLAUDE.md.
 - Ticket de caisse (contrat multi-environnements 1.9.0, § 5.3, `src/contracts/receipt.ts`,
   `src/services/receipt/receiptReader.ts`) : « Scan receipt » d'Add (proxy joignable et `receiptRead`), photo prise ou
   choisie, réduite à 1500 px en JPEG, envoyée à `POST /api/receipt/read` (le proxy appelle Haiku 5.5, rien n'est
-  gardé). `ExpenseForm.prefill` reprend montant, devise proposée, date dans les limites et commerçant (partie
-  retrouvée par `merchantBrand`, sinon par le texte du ticket, mots entiers ; sinon texte libre) ; carte,
-  sous-catégorie et commentaire inchangés. Note « check before saving » avec ce qui n'est pas repris, cash ou TWINT
+  gardé). `ExpenseForm.prefill` reprend la carte (la seule du propriétaire dont `cardDigits`, contrat mobile v0.13,
+  est celui du ticket ; aucune ou plusieurs : carte gardée, signalé), montant, devise proposée, date dans les limites et commerçant (partie
+  retrouvée par `merchantBrand`, sinon par le texte du ticket, mots entiers ; sinon texte libre) ;
+  sous-catégorie (sauf si elle ne va plus avec la carte) et commentaire inchangés. Note « check before saving » avec ce qui n'est pas repris, cash ou TWINT
   signalés ; Michel confirme toujours.
 - Écrans : barre d'onglets en bas (`App.vue`, sans routeur) : Add (`AddView.vue`), Follow-up
   (`BudgetView.vue`), Expenses (`HistoryView.vue`) ; noms internes Budget et History dans le code.
@@ -118,7 +119,7 @@ dans `../hometools-proxy`. Chacun a son propre CLAUDE.md.
 5. Contrat mobile v0.4 : couleur des cartes, sous-catégories par propriétaire (fait).
 6. Contrat mobile v0.5 : navigation sur les 12 derniers mois ; saisies annulées purgées chaque nuit par le Mac (fait).
 7. Lot M3 (contrat v0.6, liaison au mouvement) : aucun nouveau champ ; mouvement lié affiché dans Expenses (date,
-   texte, montant payé en positif, jamais comparé à la saisie), rappel de la carte du paiement dans le formulaire
+   texte, montant payé en positif, jamais comparé à la saisie ; rappel de la carte du paiement retiré ensuite, choix de Michel)
    (fait).
 8. Date du paiement saisissable dans Add (aujourd'hui par défaut) et modifiable sur une saisie pas encore liée (fait).
 9. Annulation d'une saisie liée, pas encore allouée (contrat mobile § 4.2, Backend d'abord) (fait).
@@ -133,12 +134,12 @@ dans `../hometools-proxy`. Chacun a son propre CLAUDE.md.
     (fait).
 
 13. Lecture d'un ticket de caisse, lot R1 (contrat multi-environnements 1.9.0, proxy fait) : « Scan receipt » dans
-    Add, préremplissage sans la carte (fait). Lot R2 (carte par `cardDigits`, contrat mobile v0.13) : en attente du
-    Backend.
+    Add, préremplissage sans la carte (fait). Lot R2 : carte retrouvée par `cardDigits` (contrat mobile v0.13 ; v0.14 :
+    cartes clôturées jamais publiées, rien à faire) (fait).
 
 ## Backlog
 
-- **Lecture d'un ticket de caisse** (validé par Michel, 2026-11-27 ; lot R1 fait, lot R2 en attente) : bouton
+- **Lecture d'un ticket de caisse** (validé par Michel, 2026-11-27 ; lots R1 et R2 faits) : bouton
   « Scan receipt » dans Add, photo réduite (~1500 px, JPEG) envoyée au proxy (`POST /api/receipt/read`, capacité à
   ajouter au contrat multi-environnements, canonique dans `../hometools-proxy`). Le proxy appelle l'API Claude (SDK
   Python `anthropic`, sortie JSON imposée : `date`, `time`, `amount`, `currency`, `cardDigits`, `merchant`, `null` si

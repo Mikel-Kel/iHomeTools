@@ -48,6 +48,12 @@ import {
    réception. untrackedTotals : totaux par propriétaire
    calculés par le Mac (year.actual = année à date) ; l'app
    n'additionne rien. kind null : carte sans compte.
+
+   Chiffres de la carte (v0.13, cardDigits) : 4 derniers
+   caractères du numéro de la carte s'ils sont 4 chiffres,
+   sinon null (absent : null) ; servent à retrouver la carte
+   d'un ticket de caisse lu. Carte clôturée (v0.14) : jamais
+   publiée.
 ========================= */
 
 export const MOBILE_FOLDER = "mobile";
@@ -75,6 +81,9 @@ export interface PaymentMean {
 
   /* Devise proposée par défaut (carte, sinon compte). */
   currency: string;
+
+  /* 4 derniers chiffres de la carte (v0.13) ; null s'ils ne sont pas connus. */
+  cardDigits: string | null;
 }
 
 export interface MonthFigures {
@@ -289,6 +298,7 @@ export function readMobileData(
         kind: readKind(mean.kind),
         currency: asString(mean.currency, "CHF"),
         tracked: mean.tracked !== false,
+        cardDigits: /^\d{4}$/.test(asString(mean.cardDigits)) ? asString(mean.cardDigits) : null,
       })),
 
     subCategories: objects(file.subCategories)

@@ -78,10 +78,14 @@ import {
    choix de carte, modifiable (CHF et devises du fichier des
    cours).
 
-   Ticket de caisse lu (Add, prefill) : montant, devise
-   proposée (CHF ou devise du fichier des cours), jour dans
-   les limites de la date et commerçant repris ; le reste
-   (carte, sous-catégorie, commentaire) ne change pas. Ce qui
+   Ticket de caisse lu (Add, prefill) : carte du propriétaire
+   dont les 4 derniers chiffres sont ceux du ticket (une
+   seule, contrat mobile v0.13 ; aucune ou plusieurs : carte
+   gardée), montant, devise proposée (CHF ou devise du
+   fichier des cours), jour dans les limites de la date et
+   commerçant repris ; sous-catégorie et commentaire ne
+   changent pas (sauf sous-catégorie qui ne va plus avec la
+   carte). Ce qui
    n'est pas repris est rendu à Add, qui le signale.
 
    Mêmes contrôles que le Mac (§ 4.3) : montant positif, deux
@@ -92,6 +96,9 @@ import {
 
 /* Valeurs lues sur un ticket (null : rien à reprendre). */
 export interface FormPrefill {
+  /* 4 derniers chiffres de la carte du ticket. */
+  cardDigits: string | null;
+
   amount: number | null;
   currency: string | null;
 
@@ -148,6 +155,7 @@ interface CardOption {
   color: string | null;
   currency: string;
   tracked: boolean;
+  cardDigits: string | null;
 }
 
 interface SubCategoryOption {
@@ -302,6 +310,7 @@ const cards =
         color: known?.color ?? null,
         currency: known?.currency ?? props.initial!.currency,
         tracked: known?.tracked ?? true,
+        cardDigits: known?.cardDigits ?? null,
       },
     ];
   });
@@ -570,6 +579,22 @@ function prefill(
 
   refreshToday();
 
+  if (values.cardDigits) {
+    const matches =
+      cards.value.filter(card => card.cardDigits === values.cardDigits);
+
+    const kept =
+      cards.value.find(card => card.cardId === cardId.value)?.label ?? "the chosen card";
+
+    if (matches.length === 1) {
+      selectCard(matches[0].cardId);
+    } else if (matches.length > 1) {
+      skipped.push(`Several of your cards end with ${values.cardDigits}: ${kept} kept.`);
+    } else {
+      skipped.push(`No card of yours ends with ${values.cardDigits}: ${kept} kept.`);
+    }
+  }
+
   if (values.amount !== null && values.amount <= AMOUNT_MAX) {
     amountText.value = values.amount.toFixed(2);
   }
@@ -690,13 +715,6 @@ watch(
 
     <section class="field">
       <h2>Card</h2>
-
-      <p
-        v-if="amountEditable && cardTracked"
-        class="field-hint"
-      >
-        The card you paid with: the server links the expense to its bank movement.
-      </p>
 
       <div class="choices cards">
         <button
@@ -825,13 +843,6 @@ watch(
   color: var(--text-soft);
   font-size: var(--font-size-sm);
   font-weight: 700;
-}
-
-.field-hint {
-  margin: -0.25rem 0 0;
-
-  color: var(--text-soft);
-  font-size: var(--font-size-xs);
 }
 
 .choices {
