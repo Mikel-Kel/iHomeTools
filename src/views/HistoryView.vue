@@ -116,7 +116,7 @@ function editRules(
   }
 
   if (item?.action === "cancel" && item.step !== "rejected") {
-    return { scope: "none", cancellable: false, note: "Cancellation on its way to the Mac." };
+    return { scope: "none", cancellable: false, note: "Cancellation on its way to the server." };
   }
 
   if (entry?.state === "cancelled") {

@@ -48,6 +48,9 @@
   /* Marges de l'écran (encoche, barre d'accueil). */
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* En-tête de l'app sous la zone sûre (icône de 48 px et marges, App.vue), plus un écart : les panneaux du bas s'arrêtent dessous. */
+  --app-header-height: 76px;
   --gutter: 16px;
 }
 

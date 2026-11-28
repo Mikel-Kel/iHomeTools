@@ -695,7 +695,7 @@ watch(
         v-if="amountEditable && cardTracked"
         class="field-hint"
       >
-        The card you paid with: the Mac links the expense to its bank movement.
+        The card you paid with: the server links the expense to its bank movement.
       </p>
 
       <div class="choices cards">

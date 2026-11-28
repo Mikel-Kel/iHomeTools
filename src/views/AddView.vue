@@ -213,6 +213,19 @@ function save(
           :disabled="scanning"
           @click="chooseReceipt"
         >
+          <svg
+            class="scan-icon"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h1.6l1.2-1.8A1.5 1.5 0 0 1 10.5 3.5h3a1.5 1.5 0 0 1 1.2.7L15.9 6h1.6A2.5 2.5 0 0 1 20 8.5v8a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5z" />
+            <circle
+              cx="12"
+              cy="12.5"
+              r="3.5"
+            />
+          </svg>
+
           {{ scanning ? "Reading receipt…" : "Scan receipt" }}
         </button>
 
@@ -278,8 +291,26 @@ function save(
 }
 
 .scan {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+
   width: 100%;
   margin: 0 0 0.9rem;
+}
+
+.scan-icon {
+  flex: none;
+
+  width: 22px;
+  height: 22px;
+
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
 }
 
 .photo-input {

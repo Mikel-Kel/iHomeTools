@@ -166,7 +166,7 @@ watch(
           v-else-if="!mobileDetails && detailsMissing"
           class="state"
         >
-          No details published by the Mac yet.
+          No details published by the server yet.
         </p>
 
         <p
@@ -241,7 +241,7 @@ watch(
   gap: 0.9rem;
 
   width: 100%;
-  max-height: calc(100% - var(--safe-top) - 24px);
+  max-height: calc(100% - var(--safe-top) - var(--app-header-height));
   overflow-y: auto;
   overscroll-behavior: contain;
 

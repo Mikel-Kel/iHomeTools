@@ -99,7 +99,7 @@ async function connect() {
         <h1 id="unavailable-title">Home services unreachable</h1>
 
         <p class="message">
-          The server does not answer. Check that Tailscale is on, and that the Mac is on and connected.
+          The server does not answer. Check that Tailscale is on, and that the server is on and connected.
         </p>
       </template>
 

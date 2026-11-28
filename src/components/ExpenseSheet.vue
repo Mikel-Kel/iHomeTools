@@ -204,7 +204,7 @@ onBeforeUnmount(() => {
   gap: 1rem;
 
   width: 100%;
-  max-height: calc(100% - var(--safe-top) - 24px);
+  max-height: calc(100% - var(--safe-top) - var(--app-header-height));
   overflow-y: auto;
   overscroll-behavior: contain;
 
