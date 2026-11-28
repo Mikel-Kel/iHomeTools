@@ -132,7 +132,11 @@ dans `../hometools-proxy`. Chacun a son propre CLAUDE.md.
   Python `anthropic`, sortie JSON imposée : `date`, `time`, `amount`, `currency`, `cardDigits`, `merchant`, `null` si
   illisible) avec une clé API de la Claude Console (facturée à part de l'abonnement claude.ai, limite de dépense
   basse), rangée sur la machine du proxy seulement. Rien n'est gardé ; le formulaire est seulement prérempli, Michel
-  confirme. Modèle : Opus 5.5 d'abord, Haiku 5.5 si aussi bon sur de vrais tickets.
+  confirme. Sortie : aussi `paymentMethod` (`card`, `cash`, `twint`, `other`) et `merchantBrand` (nom usuel, pour
+  retrouver la partie dans `parties.json`).
+  POC du 2026-11-28 (3 vrais tickets, photo 1500 px, effort `low`, script hors repo) : Opus 5.5 et Haiku 5.5 justes
+  sur tous les champs utiles, cash reconnu ; Haiku 1,3 à 2,3 s pour environ 0,03 centime par ticket → **Haiku 5.5
+  retenu**, à revoir sur des tickets plus difficiles (papier thermique pâli, froissé, devise, capture TWINT).
   Étape 2, carte : 4 derniers chiffres déclarés par carte dans HomeTools › Master data (avec Apple Pay, ceux du
   numéro de compte de l'appareil, pas de la carte physique), publiés dans `mobile.json` (contrat mobile à étendre).
 - **TWINT (lot M4)** : une web app ne lit rien de l'app TWINT (pas d'API pour un particulier, pas de partage vers une
