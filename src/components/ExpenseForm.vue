@@ -9,6 +9,8 @@ import {
 
 import MerchantField from "@/components/MerchantField.vue";
 
+import { PARTY_NAME_MAX } from "@/contracts/mobile";
+
 import type { ExpenseValues } from "@/services/mobile/expenseQueue";
 
 import {
@@ -76,11 +78,29 @@ import {
    choix de carte, modifiable (CHF et devises du fichier des
    cours).
 
+   Ticket de caisse lu (Add, prefill) : montant, devise
+   proposée (CHF ou devise du fichier des cours), jour dans
+   les limites de la date et commerçant repris ; le reste
+   (carte, sous-catégorie, commentaire) ne change pas. Ce qui
+   n'est pas repris est rendu à Add, qui le signale.
+
    Mêmes contrôles que le Mac (§ 4.3) : montant positif, deux
    décimales au plus ; commentaire de 50 caractères au plus.
    En modification, enregistrable seulement si une valeur a
    changé.
 ========================= */
+
+/* Valeurs lues sur un ticket (null : rien à reprendre). */
+export interface FormPrefill {
+  amount: number | null;
+  currency: string | null;
+
+  /* AAAA-MM-JJ */
+  paidDate: string | null;
+
+  partyId: number | null;
+  partyText: string | null;
+}
 
 export type FormScope =
   | "all"
@@ -535,7 +555,54 @@ function reset() {
   currency.value = cardCurrency(cardId.value);
 }
 
+/* JJ.MM.AAAA */
+function displayDay(
+  day: string
+): string {
+  return `${day.slice(8, 10)}.${day.slice(5, 7)}.${day.slice(0, 4)}`;
+}
+
+/* Ticket lu : valeurs reprises dans le formulaire ; rend ce qui n'a pas pu l'être. */
+function prefill(
+  values: FormPrefill
+): string[] {
+  const skipped: string[] = [];
+
+  refreshToday();
+
+  if (values.amount !== null && values.amount <= AMOUNT_MAX) {
+    amountText.value = values.amount.toFixed(2);
+  }
+
+  if (values.currency) {
+    if (values.currency === cardCurrency(cardId.value) || currencies.value.includes(values.currency)) {
+      currency.value = values.currency;
+    } else {
+      skipped.push(`Currency ${values.currency} is not offered: ${currency.value} kept.`);
+    }
+  }
+
+  if (values.paidDate) {
+    if (values.paidDate >= earliestDay.value && values.paidDate <= today.value) {
+      paidDate.value = values.paidDate;
+    } else {
+      skipped.push(`Receipt date ${displayDay(values.paidDate)} is out of range: ${displayDay(paidDate.value)} kept.`);
+    }
+  }
+
+  if (values.partyId !== null) {
+    merchantId.value = values.partyId;
+    merchantText.value = "";
+  } else if (values.partyText) {
+    merchantId.value = null;
+    merchantText.value = values.partyText.slice(0, PARTY_NAME_MAX);
+  }
+
+  return skipped;
+}
+
 defineExpose({
+  prefill,
   reset,
 });
 

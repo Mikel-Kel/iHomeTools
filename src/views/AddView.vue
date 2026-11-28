@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import {
+  computed,
   ref,
   useTemplateRef,
 } from "vue";
@@ -12,7 +13,10 @@ import {
   type ExpenseValues,
 } from "@/services/mobile/expenseQueue";
 
-import { deviceOwner } from "@/services/environment/environmentState";
+import {
+  deviceOwner,
+  environment,
+} from "@/services/environment/environmentState";
 
 import {
   mobileData,
@@ -20,6 +24,12 @@ import {
   ownSubCategories,
   subCategoryLabel,
 } from "@/services/mobile/mobileData";
+
+import {
+  readReceipt,
+  ReceiptError,
+  receiptParty,
+} from "@/services/receipt/receiptReader";
 
 import { formatAmount } from "@/utils/amountFormat";
 
@@ -33,6 +43,13 @@ import { formatAmount } from "@/utils/amountFormat";
    (aujourd'hui par défaut), heure celle de l'enregistrement.
    La saisie part dans la file d'attente (expenseQueue.ts),
    envoyée dès que le proxy répond.
+
+   « Scan receipt » (capacité receiptRead, proxy joignable) :
+   photo prise ou choisie, lue par le proxy
+   (receiptReader.ts), qui préremplit montant, devise, date et
+   commerçant ; note « check before saving », avec ce qui n'a
+   pas été repris et le moyen de paiement s'il n'est pas une
+   carte. Michel confirme toujours en enregistrant.
 ========================= */
 
 const form =
@@ -41,6 +58,89 @@ const form =
 /* Message après un enregistrement. */
 const confirmation =
   ref("");
+
+const photoInput =
+  useTemplateRef<HTMLInputElement>("photoInput");
+
+const canScan =
+  computed(() => environment.value?.capabilities.receiptRead === true);
+
+const scanning =
+  ref(false);
+
+/* Résultat de la dernière lecture : notes à vérifier, ou échec. */
+const scanNotes =
+  ref<string[]>([]);
+
+const scanError =
+  ref("");
+
+function chooseReceipt() {
+  photoInput.value?.click();
+}
+
+async function onReceiptChosen() {
+  const input =
+    photoInput.value;
+
+  const photo =
+    input?.files?.[0];
+
+  if (!input || !photo) {
+    return;
+  }
+
+  scanning.value = true;
+  scanNotes.value = [];
+  scanError.value = "";
+  confirmation.value = "";
+
+  try {
+    const reading =
+      await readReceipt(photo);
+
+    if (reading.amount === null && reading.date === null && !reading.merchant && !reading.merchantBrand) {
+      scanError.value = "Nothing could be read on this receipt: enter the expense by hand.";
+      return;
+    }
+
+    const party =
+      receiptParty(reading);
+
+    const notes =
+      form.value?.prefill({
+        amount: reading.amount,
+        currency: reading.currency,
+        paidDate: reading.date,
+        partyId: party?.id ?? null,
+        partyText: party ? null : reading.merchantBrand ?? reading.merchant,
+      }) ?? [];
+
+    if (reading.amount === null) {
+      notes.unshift("Amount not read: enter it.");
+    }
+
+    if (reading.paymentMethod === "cash") {
+      notes.push("The receipt says paid in cash.");
+    } else if (reading.paymentMethod === "twint") {
+      notes.push("The receipt says paid with TWINT.");
+    }
+
+    scanNotes.value = ["Read from the receipt: check before saving.", ...notes];
+
+  } catch (err) {
+    scanError.value =
+      err instanceof ReceiptError
+        ? err.message
+        : "The receipt could not be read: enter the expense by hand.";
+
+  } finally {
+    scanning.value = false;
+
+    /* Même photo choisie à nouveau : l'événement change repart. */
+    input.value = "";
+  }
+}
 
 function save(
   values: ExpenseValues,
@@ -70,6 +170,8 @@ function save(
       : "Saved, but not kept on this iPhone: keep the app open until it is sent.";
 
   form.value?.reset();
+  scanNotes.value = [];
+  scanError.value = "";
 }
 </script>
 
@@ -104,6 +206,46 @@ function save(
     </p>
 
     <template v-else>
+      <template v-if="canScan">
+        <button
+          type="button"
+          class="button scan"
+          :disabled="scanning"
+          @click="chooseReceipt"
+        >
+          {{ scanning ? "Reading receipt…" : "Scan receipt" }}
+        </button>
+
+        <input
+          ref="photoInput"
+          class="photo-input"
+          type="file"
+          accept="image/*"
+          @change="onReceiptChosen"
+        >
+
+        <div
+          v-if="scanNotes.length"
+          class="scan-note"
+          role="status"
+        >
+          <p
+            v-for="note in scanNotes"
+            :key="note"
+          >
+            {{ note }}
+          </p>
+        </div>
+
+        <p
+          v-if="scanError"
+          class="scan-error"
+          role="alert"
+        >
+          {{ scanError }}
+        </p>
+      </template>
+
       <ExpenseForm
         ref="form"
         submit-label="Save"
@@ -132,6 +274,43 @@ function save(
   margin: 1rem 0 0;
 
   color: var(--text-soft);
+  text-align: center;
+}
+
+.scan {
+  width: 100%;
+  margin: 0 0 0.9rem;
+}
+
+.photo-input {
+  display: none;
+}
+
+.scan-note {
+  margin: 0 0 0.9rem;
+  padding: 10px 12px;
+
+  border: 1px solid var(--primary);
+  border-radius: 12px;
+
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: var(--font-size-sm);
+}
+
+.scan-note p {
+  margin: 0;
+}
+
+.scan-note p:first-child {
+  font-weight: 600;
+}
+
+.scan-error {
+  margin: 0 0 0.9rem;
+
+  color: var(--negative);
+  font-size: var(--font-size-sm);
   text-align: center;
 }
 

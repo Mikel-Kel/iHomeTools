@@ -17,7 +17,7 @@ import {
 
 /* Version du contrat implémentée par l'app. */
 export const CONTRACT_VERSION =
-  "1.8.0";
+  "1.9.0";
 
 export const WHOAMI_PATH =
   "/api/whoami";
@@ -51,6 +51,9 @@ export interface Capabilities {
 
   /* Saisie des dépenses depuis l'iPhone (depuis 1.7.0). */
   mobileExpense: boolean;
+
+  /* Lecture d'un ticket de caisse par le proxy (depuis 1.9.0, §5.3). */
+  receiptRead: boolean;
 }
 
 export interface EnvironmentInfo {
@@ -148,6 +151,9 @@ export function readWhoami(
 
       mobileExpense:
         asBoolean(capabilities?.mobileExpense),
+
+      receiptRead:
+        asBoolean(capabilities?.receiptRead),
     },
   };
 }

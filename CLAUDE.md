@@ -13,7 +13,8 @@ dans `../hometools-proxy`. Chacun a son propre CLAUDE.md.
   `mobile/mobile.json`, réel et budget, liaison au mouvement). Lecteur : `src/contracts/mobile.ts`.
 - Contrat multi-environnements : `contracts/MULTI_ENV_CONTRACT.md` (copie ; la canonique est dans
   `../hometools-proxy/contracts/`). Ne jamais la modifier ici sans la modifier d'abord là-bas.
-- Capacité requise : `mobileExpense`. Sans elle, l'app l'indique et ne lit rien.
+- Capacité requise : `mobileExpense`. Sans elle, l'app l'indique et ne lit rien. Capacité `receiptRead` (contrat
+  1.9.0) : bouton « Scan receipt » d'Add, masqué sans elle.
 
 ## Stack
 
@@ -69,6 +70,13 @@ dans `../hometools-proxy`. Chacun a son propre CLAUDE.md.
   lecture seule. Date du paiement choisie
   dans Add (aujourd'hui par défaut, 60 jours en arrière au plus, heure de l'enregistrement) et modifiable tant que la
   saisie est ouverte ou refusée (même heure) ; l'heure n'est jamais choisie (choix de Michel).
+- Ticket de caisse (contrat multi-environnements 1.9.0, § 5.3, `src/contracts/receipt.ts`,
+  `src/services/receipt/receiptReader.ts`) : « Scan receipt » d'Add (proxy joignable et `receiptRead`), photo prise ou
+  choisie, réduite à 1500 px en JPEG, envoyée à `POST /api/receipt/read` (le proxy appelle Haiku 5.5, rien n'est
+  gardé). `ExpenseForm.prefill` reprend montant, devise proposée, date dans les limites et commerçant (partie
+  retrouvée par `merchantBrand`, sinon par le texte du ticket, mots entiers ; sinon texte libre) ; carte,
+  sous-catégorie et commentaire inchangés. Note « check before saving » avec ce qui n'est pas repris, cash ou TWINT
+  signalés ; Michel confirme toujours.
 - Écrans : barre d'onglets en bas (`App.vue`, sans routeur) : Add (`AddView.vue`), Follow-up
   (`BudgetView.vue`), Expenses (`HistoryView.vue`) ; noms internes Budget et History dans le code.
 - Le Mac calcule tout (réel, budget, non confirmé) : l'app ne fait aucun total ni agrégat. Seule exception (choix de
@@ -124,9 +132,13 @@ dans `../hometools-proxy`. Chacun a son propre CLAUDE.md.
     l'ouverture d'un détail, relu si son `generatedAt` diffère de celui de `mobile.json` ; copie gardée hors ligne
     (fait).
 
+13. Lecture d'un ticket de caisse, lot R1 (contrat multi-environnements 1.9.0, proxy fait) : « Scan receipt » dans
+    Add, préremplissage sans la carte (fait). Lot R2 (carte par `cardDigits`, contrat mobile v0.13) : en attente du
+    Backend.
+
 ## Backlog
 
-- **Lecture d'un ticket de caisse** (validé dans le principe par Michel, 2026-11-27, pas commencé) : bouton
+- **Lecture d'un ticket de caisse** (validé par Michel, 2026-11-27 ; lot R1 fait, lot R2 en attente) : bouton
   « Scan receipt » dans Add, photo réduite (~1500 px, JPEG) envoyée au proxy (`POST /api/receipt/read`, capacité à
   ajouter au contrat multi-environnements, canonique dans `../hometools-proxy`). Le proxy appelle l'API Claude (SDK
   Python `anthropic`, sortie JSON imposée : `date`, `time`, `amount`, `currency`, `cardDigits`, `merchant`, `null` si
@@ -137,8 +149,9 @@ dans `../hometools-proxy`. Chacun a son propre CLAUDE.md.
   POC du 2026-11-28 (3 vrais tickets, photo 1500 px, effort `low`, script hors repo) : Opus 5.5 et Haiku 5.5 justes
   sur tous les champs utiles, cash reconnu ; Haiku 1,3 à 2,3 s pour environ 0,03 centime par ticket → **Haiku 5.5
   retenu**, à revoir sur des tickets plus difficiles (papier thermique pâli, froissé, devise, capture TWINT).
-  Étape 2, carte : 4 derniers chiffres déclarés par carte dans HomeTools › Master data (avec Apple Pay, ceux du
-  numéro de compte de l'appareil, pas de la carte physique), publiés dans `mobile.json` (contrat mobile à étendre).
+  Étape 2, carte : 4 derniers caractères de `CardInternalID` (champ Card existant, choix de Michel : rien à saisir),
+  publiés par le Mac dans `paymentMeans[].cardDigits` de `mobile.json` (contrat mobile v0.13) ; aucune ou plusieurs
+  cartes du propriétaire avec ces chiffres : carte choisie gardée, signalé.
 - **TWINT (lot M4)** : une web app ne lit rien de l'app TWINT (pas d'API pour un particulier, pas de partage vers une
   web app). Pistes : TWINT comme moyen de paiement dans Add, lié au mouvement « TWINT … » de l'import bancaire (règle
   de liaison à définir avec le Backend) ; capture d'écran de la confirmation lue comme un ticket ; export de
